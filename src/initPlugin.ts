@@ -1,7 +1,10 @@
 import PostMessageSocket from "./postMessageSocket.js";
 import initUpdateHooks from "./updateHooks.js";
 
-export function createInitPlugin({ data, settings, hooks }, { container, src, beforeInit, timeout }) {
+export function createInitPlugin(
+	{ data, settings, hooks },
+	{ container, src, beforeInit, timeout },
+) {
 	const pluginIframe = document.createElement("iframe");
 
 	pluginIframe.src = src;
@@ -18,10 +21,21 @@ export function createInitPlugin({ data, settings, hooks }, { container, src, be
 
 	container.appendChild(pluginIframe);
 
-	return initPlugin({ data, settings, hooks }, { currentWindow: window, targetWindow: pluginIframe.contentWindow, timeout, container });
+	return initPlugin(
+		{ data, settings, hooks },
+		{
+			currentWindow: window,
+			targetWindow: pluginIframe.contentWindow,
+			timeout,
+			container,
+		},
+	);
 }
 
-export default function initPlugin({ data, settings, hooks }, { currentWindow, targetWindow, timeout = null, container }) {
+export default function initPlugin(
+	{ data, settings, hooks },
+	{ currentWindow, targetWindow, timeout = null, container },
+) {
 	const messageSocket = new PostMessageSocket(currentWindow, targetWindow);
 
 	const updateHooks = initUpdateHooks(messageSocket);
@@ -35,23 +49,37 @@ export default function initPlugin({ data, settings, hooks }, { currentWindow, t
 		if (timeout) {
 			timeoutId = setTimeout(() => {
 				messageSocket.terminate();
-				if (container?.remove && typeof container.remove === "function") {
+				if (
+					container?.remove &&
+					typeof container.remove === "function"
+				) {
 					container.remove();
 				}
-				reject(new Error(`Plugin initialization failed with timeout! You can try to increase the timeout value in the plugin settings. Current value is ${timeout}ms.`));
+				reject(
+					new Error(
+						`Plugin initialization failed with timeout! You can try to increase the timeout value in the plugin settings. Current value is ${timeout}ms.`,
+					),
+				);
 			}, timeout);
 		}
 
 		async function onDomReady() {
 			messageSocket.sendMessage("ackDomReady", {});
-			const answer = await messageSocket.sendRequest("init", { data, settings, hooks: Object.keys(hooks) });
+			const answer = await messageSocket.sendRequest("init", {
+				data,
+				settings,
+				hooks: Object.keys(hooks),
+			});
 
 			const methods = {};
 
 			answer.forEach((type) => {
 				methods[type] = async (payload) => {
 					if (type === "updateHooks") {
-						return await messageSocket.sendRequest(type, updateHooks(payload));
+						return await messageSocket.sendRequest(
+							type,
+							updateHooks(payload),
+						);
 					}
 					return await messageSocket.sendRequest(type, payload);
 				};

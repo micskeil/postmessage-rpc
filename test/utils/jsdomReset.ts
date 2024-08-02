@@ -15,7 +15,6 @@ function sideEffectsMapper(window, document) {
 			},
 			keys: Object.keys(window),
 		},
-
 	};
 	return sideEffects;
 }
@@ -51,7 +50,9 @@ function resetJSDOM(document, sideEffects) {
 	const rootElm = document.documentElement;
 
 	// Remove attributes on root element
-	[ ...rootElm.attributes ].forEach(attr => rootElm.removeAttribute(attr.name));
+	[...rootElm.attributes].forEach((attr) =>
+		rootElm.removeAttribute(attr.name),
+	);
 
 	// Remove elements (faster than setting innerHTML)
 	while (rootElm.firstChild) {
@@ -70,7 +71,7 @@ function resetJSDOM(document, sideEffects) {
 
 		// Keys
 		Object.keys(global[obj])
-			.filter(key => !sideEffects[obj].keys.includes(key))
+			.filter((key) => !sideEffects[obj].keys.includes(key))
 			.forEach((key) => {
 				delete global[obj][key];
 			});
