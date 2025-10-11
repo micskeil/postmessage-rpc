@@ -310,4 +310,150 @@ describe("postMessageSocket", () => {
 
     expect(cb).not.toHaveBeenCalled();
   });
+
+  it("Should validate origin and reject messages from wrong origin", async () => {
+    const { windowSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
+
+    const cb = vi.fn();
+    windowSocket.createMessageChannel("test", cb);
+
+    // Create a message with mismatched origin
+    const event = new MessageEvent("message", {
+      data: {
+        name: "test",
+        id: "1234",
+        payload: "hello",
+        waitForResponse: false,
+      },
+      origin: "https://malicious-site.com",
+      source: pluginIframe.contentWindow,
+    });
+
+    pluginIframe2.contentWindow?.dispatchEvent(event);
+    vi.runAllTimers();
+
+    expect(cb).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Origin mismatch"),
+    );
+  });
+
+  it("Should handle async callbacks correctly", async () => {
+    const { windowSocket, iframeSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
+
+    const asyncCb = vi.fn().mockImplementation(async (payload: string) => {
+      // Simulate async work
+      return new Promise((resolve) => {
+        setTimeout(() => resolve(`Processed: ${payload}`), 10);
+      });
+    });
+
+    windowSocket.createMessageChannel("asyncTest", asyncCb);
+    const testChannel = iframeSocket.createMessageChannel("asyncTest", () => {});
+
+    const responsePromise = testChannel?.sendAndWait("test data");
+    vi.runAllTimers();
+
+    expect(asyncCb).toHaveBeenCalledWith("test data");
+
+    responsePromise?.then((response) => {
+      expect(response).toBe("Processed: test data");
+    });
+  });
+
+  it("Should handle callback errors and send error response", async () => {
+    const { windowSocket, iframeSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
+
+    const errorCb = vi.fn().mockImplementation(() => {
+      throw new Error("Callback failed!");
+    });
+
+    windowSocket.createMessageChannel("errorTest", errorCb);
+    const testChannel = iframeSocket.createMessageChannel("errorTest", () => {});
+
+    const responsePromise = testChannel?.sendAndWait("trigger error");
+    vi.runAllTimers();
+
+    expect(errorCb).toHaveBeenCalledWith("trigger error");
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Error in callback for "errorTest"'),
+    );
+
+    responsePromise?.then((response) => {
+      // Should receive error response
+      expect(response).toEqual({ error: "Callback failed!" });
+    });
+  });
+
+  it("Should handle non-Error exceptions in callbacks", async () => {
+    const { windowSocket, iframeSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
+
+    const errorCb = vi.fn().mockImplementation(() => {
+      throw "String error"; // Non-Error exception
+    });
+
+    windowSocket.createMessageChannel("stringErrorTest", errorCb);
+    const testChannel = iframeSocket.createMessageChannel(
+      "stringErrorTest",
+      () => {},
+    );
+
+    const responsePromise = testChannel?.sendAndWait("trigger error");
+    vi.runAllTimers();
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Error in callback for "stringErrorTest"'),
+    );
+
+    responsePromise?.then((response) => {
+      expect(response).toEqual({ error: "String error" });
+    });
+  });
+
+  it("Should properly clean up event listeners on terminate", async () => {
+    const parentWindow = pluginIframe2.contentWindow as Window;
+    const { windowSocket, removeMessageEventFix } = createMessageSockets(
+      parentWindow,
+      pluginIframe.contentWindow as Window,
+    );
+
+    const cb = vi.fn();
+    windowSocket.createMessageChannel("test", cb);
+
+    // Terminate the socket - this removes the event listener
+    windowSocket.terminate();
+
+    // Manually trigger a message event
+    const event = new MessageEvent("message", {
+      data: {
+        name: "test",
+        id: "1234",
+        payload: "hello",
+        waitForResponse: false,
+      },
+      source: pluginIframe.contentWindow,
+      origin: parentWindow.origin,
+    });
+
+    parentWindow.dispatchEvent(event);
+    vi.runAllTimers();
+
+    // Callback should not be called because the event listener was removed
+    expect(cb).not.toHaveBeenCalled();
+    // No error is logged because the event listener itself was removed by terminate()
+
+    removeMessageEventFix(parentWindow);
+  });
 });
