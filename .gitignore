@@ -24,4 +24,4 @@ yarn-error.log*
 *.sw?
 
 # Project-specific documentation
-CLAUDE.md
+!CLAUDE.md
