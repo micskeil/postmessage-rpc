@@ -1,159 +1,239 @@
-type ListenerOptions = {
-	once: boolean;
-};
-
-type CustomEventListener<T, U> = {
-	callback: (payload: T) => U;
-	options: ListenerOptions;
-};
-
-type Message = {
-	type: "message";
-	event: string;
-	id: string;
-	payload: unknown;
-	waitForResponse: boolean;
-};
-
-type MessageResponse = {
-	type: "response";
-	event: string;
-	id: string;
-	payload?: unknown;
-	error?: string;
-};
-
-type EventName = string;
+import {
+  CustomEventListener,
+  ErrorStrings,
+  EventName,
+  Message,
+  MessageChannel,
+  ResultStrings,
+  SafeResult,
+  SuccessResult,
+} from "./types/index";
 
 /**
- * PostMessageSocket is a class that allows
- * for easy communication between two windowSocket
- * instances using the postMessage appliedEventListeners
- * @example
- * const windowSocket = new PostMessageSocket(window, iframe);
- * const iframeSocket = new PostMessageSocket(iframe, window);
- * windowSocket.addListener("EVENT_NAME", (payload) => console.log(payload));
+ * PostMessageSocket facilitates seamless communication between two window instances using postMessage and EventListeners.
+ *
+ * @example (window and iframe predefined)
+ * const windowSocket = new PostMessageSocket(window, iframe.contentWindow);
+ * const iframeSocket = new PostMessageSocket(iframe.contentWindow, window);
+ * windowSocket.createMessageChannel("EVENT_NAME", (payload) => console.log(payload));
+ * iframeSocket.createMessageChannel("EVENT_NAME", (payload) => console.log(payload));
+ *
  * iframeSocket.sendMessage("EVENT_NAME", "Hello World");
- * // Console will log "Hello World"
+ * Console will log "Hello World" in the windowSocket listener
  */
 export default class PostMessageSocket {
-	private messageCounter = 0;
-	private self: Window;
-	private partner: Window;
-	private customEventListeners: Map<
-		EventName,
-		CustomEventListener<any, any>
-	> = new Map();
+  /** The message counter is used to create unique message ids */
+  private messageCounter = 0;
+  private isTerminated = false;
+  private errorCallback: (error: string) => void;
+  private window: Window;
+  private targetWindow: Window;
+  private customEventListeners: Map<
+    EventName,
+    CustomEventListener<unknown, unknown>
+  > = new Map();
+  private onMessageFn = this.onMessage.bind(this);
+  private answerHandlers: Map<string, (m: Message) => void> = new Map();
 
-	private outStandingRequestListeners: Map<
-		string,
-		(r: MessageResponse) => void
-	> = new Map();
+  constructor(
+    window: Window,
+    targetWindow: Window,
+    errorCallback: (error: string) => void = (error) => console.error(error),
+  ) {
+    this.window = window;
+    this.targetWindow = targetWindow;
+    this.errorCallback = errorCallback;
+    this.window.addEventListener("message", this.onMessageFn);
+  }
 
-	private onMessageFn = this.onMessage.bind(this);
+  createMessageChannel<T, U>(
+    name: string,
+    callback: CustomEventListener<T, U>["callback"],
+    options: { once: boolean } = { once: false },
+  ): MessageChannel<T, U> | null {
+    if (this.isTerminated) {
+      this.errorCallback(ErrorStrings.SocketIsTerminated);
+      return null;
+    }
 
-	constructor(self: Window, partner: Window) {
-		this.self = self;
-		this.partner = partner;
+    const sendPostMessage = (opts: {
+      payload: T;
+      waitForResponse?: boolean;
+      msgId?: string;
+    }): string => {
+      const { payload, waitForResponse, msgId } = opts;
+      const id = msgId ? msgId : this.getNextMsgId();
+      this.targetWindow.postMessage(
+        {
+          id,
+          name,
+          payload,
+          waitForResponse,
+        },
+        this.targetWindow.origin,
+      );
+      return id;
+    };
 
-		// Add a message handler to the windowSocket
-		this.self.addEventListener("message", this.onMessageFn);
-	}
+    const send = (
+      payload: T,
+      opts?: {
+        msgId?: string;
+      },
+    ): ResultStrings.Success => {
+      const { msgId } = opts || {};
+      sendPostMessage({
+        payload,
+        waitForResponse: false,
+        msgId,
+      });
+      return ResultStrings.Success;
+    };
 
-	addListener<T, U>(
-		eventName: string,
-		callback: CustomEventListener<T, U>["callback"],
-		options: { once: boolean } = { once: false },
-	) {
-		this.customEventListeners.set(eventName, { callback, options });
-	}
+    const sendAndWait = async (payload: T): Promise<SuccessResult<U>> => {
+      const id = sendPostMessage({
+        payload,
+        waitForResponse: true,
+      });
+      const result = (await this.handleAnswerMessage(id)) as Promise<
+        SuccessResult<U>
+      >;
+      return result;
+    };
 
-	removeListener(eventName: string) {
-		this.customEventListeners.delete(eventName);
-	}
+    this.customEventListeners.set(name, {
+      callback,
+      options,
+      messageChannel: {
+        send,
+        sendAndWait,
+      },
+    } as CustomEventListener<unknown, unknown>);
 
-	sendMessage<T>(event: string, payload: T, waitForResponse = false) {
-		const id = this.getNextMsgId();
-		this.partner.postMessage(
-			JSON.stringify({
-				type: "message",
-				event,
-				payload,
-				id,
-				waitForResponse,
-			}),
-			"*",
-		);
-		// we need to wait for the response, even for a message waitforResponse = false
-		// we need a "success" response to confirm that the message was sent
-		return this.waitForResponse(id);
-	}
+    return {
+      send,
+      sendAndWait,
+    };
+  }
 
-	private waitForResponse(id: string) {
-		return new Promise((resolve, reject) => {
-			const listener = (response: MessageResponse) => {
-				//  Find the listener that corresponds to the message id
-				this.outStandingRequestListeners.delete(response.id);
-				if ("error" in response) {
-					reject(new Error(response.error));
-				}
-				resolve(response.payload);
-			};
-			this.outStandingRequestListeners.set(id, listener);
-		});
-	}
+  private handleAnswerMessage(id: string) {
+    return new Promise((resolve) => {
+      const resolveMessage = async (message: Message) => {
+        // Remove the listener from the answerHandlers map
+        this.answerHandlers.delete(message.id);
+        resolve(message.payload);
+      };
+      this.answerHandlers.set(id, resolveMessage);
+    });
+  }
 
-	private parseMessage(event: MessageEvent): Message | MessageResponse {
-		return JSON.parse(event.data);
-	}
+  /**
+   * Delete a listener for a custom event
+   */
+  removeListener(eventName: string) {
+    this.customEventListeners.delete(eventName);
+  }
 
-	private onMessage(event: MessageEvent) {
-		// If the event source is not the partner window, we don't want to do anything
-		if (event.source !== this.partner) return;
-		// If the event origin is not the partner window, we don't want to do anything
-		if (event.origin !== this.partner.origin) return;
-		event.stopImmediatePropagation();
-		const message = this.parseMessage(event);
-		if (message.type === "response") {
-			return this.outStandingRequestListeners.get(message.id)?.(message);
-		}
-		return this.sendResponse(message);
-	}
+  /**
+   * Check if the message is valid, basically check if the message is an object and has the required properties
+   */
+  private validateMessage(message: unknown): message is Message {
+    // Check if the message is valid
+    if (!message || typeof message !== "object") {
+      return false;
+    }
 
-	async sendResponse(message: Message) {
-		const listener = this.customEventListeners.get(message.event);
-		const response: MessageResponse = {
-			...message,
-			type: "response",
-		};
+    // Check if the message has the required properties
+    if (
+      !Object.hasOwnProperty.call(message, "name") ||
+      !Object.hasOwnProperty.call(message, "payload") ||
+      !Object.hasOwnProperty.call(message, "id") ||
+      !Object.hasOwnProperty.call(message, "waitForResponse")
+    ) {
+      return false;
+    }
+    return true;
+  }
 
-		if (!listener) {
-			response.error = `No listener found for the message type: ${message.event}`;
-			return this.partner.postMessage(JSON.stringify(response), "*");
-		}
+  private parseData(data: unknown): SafeResult<Message> {
+    // Check if the message is valid
+    if (!this.validateMessage(data)) {
+      return [null, new Error(ErrorStrings.WrongMessagePayload)];
+    }
+    return [data, null];
+  }
 
-		// If the listener is a once listener, we want to remove it
-		if (listener.options.once) {
-			this.removeListener(message.event);
-		}
+  private onMessage(event: MessageEvent) {
+    event.stopImmediatePropagation();
+    if (this.isTerminated) {
+      this.errorCallback(ErrorStrings.SocketIsTerminated);
+      return;
+    }
+    // If the event source is not the targetWindow window or the event origin is not the targetWindow origin, we don't want to do anything
+    if (event.source !== this.targetWindow) {
+      this.errorCallback(ErrorStrings.NoSourceWindow);
+      return;
+    }
 
-		if (message.waitForResponse) {
-			response.payload = await listener.callback(message.payload);
-			return this.partner.postMessage(JSON.stringify(response), "*");
-		} else {
-			response.payload = "Success";
-			this.partner.postMessage(JSON.stringify(response), "*");
-		}
-		await listener.callback(message.payload);
-	}
+    const [message, error] = this.parseData(event.data);
 
-	private getNextMsgId(): string {
-		const id = `${this.messageCounter++}-${Math.random().toString(36).slice(2, 9)}-${Date.now().toString(36)}`;
-		return id;
-	}
+    if (error) {
+      this.errorCallback(error.message);
+      return;
+    }
+    const { id, waitForResponse, name, payload } = message;
 
-	// Remove the message event listener from the window when the socket is terminated
-	terminate() {
-		this.self.removeEventListener("message", this.onMessageFn);
-	}
+    // Check if the message is waited as response
+    const isAnswer = this.answerHandlers.has(id);
+
+    // if the message is a response to a sent message, we want to resolve the promise
+    if (isAnswer) {
+      const resolveFn = this.answerHandlers.get(id);
+      if (!resolveFn) return;
+      return resolveFn(message);
+    }
+
+    const listener = this.customEventListeners.get(name);
+    if (!listener) {
+      this.errorCallback(`${ErrorStrings.NoMessageChannel} ${name}`);
+      return;
+    }
+
+    const {
+      callback: cb,
+      options: { once },
+    } = listener;
+
+    // If the listener is a once listener, we want to remove it
+    if (once) {
+      this.removeListener(name);
+    }
+
+    const result = cb(payload);
+
+    if (waitForResponse) {
+      listener.messageChannel.send(result, {
+        msgId: id,
+      });
+    }
+
+    return result;
+  }
+
+  private getNextMsgId(): string {
+    // The id is structured as: <incremental message counter>-<random string>-<timestamp>
+    // Example: "0-abc1234-kgj3h5"
+    return `${this.messageCounter++}-${
+      Math.random().toString(36).slice(2, 9)
+    }-${Date.now().toString(36)}`;
+  }
+
+  /**
+   * Remove the message event listener from the window when the socket is terminated
+   */
+  terminate() {
+    this.isTerminated = true;
+    this.customEventListeners.clear();
+    this.answerHandlers.clear();
+  }
 }

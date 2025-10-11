@@ -1,96 +1,106 @@
 import PostMessageSocket from "./postMessageSocket.js";
-import initUpdateHooks from "./updateHooks.js";
+
+type Method = (playload: unknown) => Promise<unknown>;
+
+interface Plugin {
+  plugin: {
+    data: unknown;
+    settings: unknown;
+    methods: Record<string, Method>;
+  };
+  settings: {
+    currentWindow: Window;
+    targetWindow: Window;
+    timeout?: number | null;
+    container?: HTMLElement;
+  };
+}
 
 export function createInitPlugin(
-	{ data, settings, hooks },
-	{ container, src, beforeInit, timeout },
+  { data, settings, hooks },
+  { container, src, beforeInit, timeout },
 ) {
-	const pluginIframe = document.createElement("iframe");
+  const pluginIframe = document.createElement("iframe");
 
-	pluginIframe.src = src;
-	pluginIframe.allowFullscreen = "allowfullscreen";
-	pluginIframe.style.width = "100%";
-	pluginIframe.style.height = "100%";
-	pluginIframe.style.border = "0";
-	pluginIframe.style.margin = "0";
-	pluginIframe.style.padding = "0";
+  // Set up the basic styles for the iframe
+  pluginIframe.src = src;
+  pluginIframe.allowFullscreen = true;
+  pluginIframe.style.width = "100%";
+  pluginIframe.style.height = "100%";
+  pluginIframe.style.border = "0";
+  pluginIframe.style.margin = "0";
+  pluginIframe.style.padding = "0";
 
-	if (typeof beforeInit === "function") {
-		beforeInit({ container, iframe: pluginIframe });
-	}
+  if (typeof beforeInit === "function") {
+    beforeInit({ container, iframe: pluginIframe });
+  }
 
-	container.appendChild(pluginIframe);
+  container.appendChild(pluginIframe);
 
-	return initPlugin(
-		{ data, settings, hooks },
-		{
-			currentWindow: window,
-			targetWindow: pluginIframe.contentWindow,
-			timeout,
-			container,
-		},
-	);
+  return initPlugin(
+    { data, settings, hooks },
+    {
+      currentWindow: window,
+      targetWindow: pluginIframe.contentWindow,
+      timeout,
+      container,
+    },
+  );
 }
 
 export default function initPlugin(
-	{ data, settings, hooks },
-	{ currentWindow, targetWindow, timeout = null, container },
+  { data, settings, hooks },
+  { currentWindow, targetWindow, timeout = null, container },
 ) {
-	const messageSocket = new PostMessageSocket(currentWindow, targetWindow);
+  const messageSocket = new PostMessageSocket(currentWindow, targetWindow);
 
-	const updateHooks = initUpdateHooks(messageSocket);
-	updateHooks({ hooks });
+  const updateHooks = initUpdateHooks(messageSocket);
+  updateHooks({ hooks });
 
-	return new Promise((resolve, reject) => {
-		messageSocket.addListener("domReady", onDomReady, { once: true });
+  return new Promise((resolve, reject) => {
+    messageSocket.addListener("domReady", onDomReady, { once: true });
 
-		let timeoutId = null;
+    let timeoutId = null;
 
-		if (timeout) {
-			timeoutId = setTimeout(() => {
-				messageSocket.terminate();
-				if (
-					container?.remove &&
-					typeof container.remove === "function"
-				) {
-					container.remove();
-				}
-				reject(
-					new Error(
-						`Plugin initialization failed with timeout! You can try to increase the timeout value in the plugin settings. Current value is ${timeout}ms.`,
-					),
-				);
-			}, timeout);
-		}
+    if (timeout) {
+      timeoutId = setTimeout(() => {
+        messageSocket.terminate();
+        if (container?.remove && typeof container.remove === "function") {
+          container.remove();
+        }
+        reject(
+          new Error(
+            `Plugin initialization failed with timeout! You can try to increase the timeout value in the plugin settings. Current value is ${timeout}ms.`,
+          ),
+        );
+      }, timeout);
+    }
 
-		async function onDomReady() {
-			messageSocket.sendMessage("ackDomReady", {});
-			const answer = await messageSocket.sendRequest("init", {
-				data,
-				settings,
-				hooks: Object.keys(hooks),
-			});
+    async function onDomReady() {
+      messageSocket.sendMessage("ackDomReady", {});
+      const answer = await messageSocket.sendRequest("init", {
+        data,
+        settings,
+        hooks: Object.keys(hooks),
+      });
 
-			const methods = {};
+      const methods = {};
 
-			answer.forEach((type) => {
-				methods[type] = async (payload) => {
-					if (type === "updateHooks") {
-						return await messageSocket.sendRequest(
-							type,
-							updateHooks(payload),
-						);
-					}
-					return await messageSocket.sendRequest(type, payload);
-				};
-			});
+      answer.forEach((type) => {
+        methods[type] = async (payload) => {
+          if (type === "updateHooks") {
+            return await messageSocket.sendRequest(type, updateHooks(payload));
+          }
+          return await messageSocket.sendRequest(type, payload);
+        };
+      });
 
-			clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-			resolve({
-				methods,
-				terminate: messageSocket.terminate,
-			});
-		}
-	});
+      resolve({
+        methods,
+        terminate: messageSocket.terminate,
+      });
+    }
+  });
 }

@@ -1,217 +1,313 @@
 import PostMessageSocket from "./postMessageSocket";
 import {
-	describe,
-	expect,
-	it,
-	beforeEach,
-	afterEach,
-	beforeAll,
-	afterAll,
-	vi,
+  describe,
+  expect,
+  it,
+  beforeEach,
+  afterEach,
+  vi,
+  beforeAll,
+  afterAll,
 } from "vitest";
-import { useFixedMessageEvent } from "../test/utils/fixEvents";
 
+import { ErrorStrings } from "./types";
+
+import { useFixedMessageEvent } from "../test/utils/fixEvents";
+import { ResultStrings } from "./types";
+
+// Not using the real console.error to avoid cluttering the test output
+console.error = vi.fn();
 const createMessageSockets = (window: Window, iframe: Window) => {
-	const { addMessageEventFix } = useFixedMessageEvent();
-	const windowSocket = new PostMessageSocket(window, iframe);
-	const iframeSocket = new PostMessageSocket(iframe, window);
-	addMessageEventFix(window, iframe);
-	addMessageEventFix(iframe, window);
-	return { windowSocket, iframeSocket };
+  const { addMessageEventFix, removeMessageEventFix } = useFixedMessageEvent();
+  const windowSocket = new PostMessageSocket(window, iframe);
+  const iframeSocket = new PostMessageSocket(iframe, window);
+  addMessageEventFix(window, iframe);
+  addMessageEventFix(iframe, window);
+  return { windowSocket, iframeSocket, removeMessageEventFix };
 };
 
-describe("set up postMessageSocket environments", () => {
-	let pluginIframe: HTMLIFrameElement;
-	let pluginIframe2: HTMLIFrameElement;
-	let body: HTMLElement = document.querySelector("body")!;
+describe("postMessageSocket", () => {
+  let pluginIframe: HTMLIFrameElement;
+  let pluginIframe2: HTMLIFrameElement;
+  const body: HTMLElement = document.querySelector("body")!;
 
-	beforeAll(() => {
-		// vi.useFakeTimers();
-	});
+  beforeAll(() => {
+    vi.useFakeTimers();
+  });
 
-	beforeEach(() => {
-		pluginIframe = document.createElement("iframe");
-		pluginIframe.src = "";
-		pluginIframe.allowFullscreen = true;
-		body.appendChild(pluginIframe);
+  afterAll(() => {
+    vi.useRealTimers();
+  });
 
-		pluginIframe2 = document.createElement("iframe");
-		pluginIframe2.src = "";
-		pluginIframe2.allowFullscreen = true;
-		body.appendChild(pluginIframe2);
-	});
-	afterEach(() => {
-		body.removeChild(pluginIframe);
-		vi.clearAllMocks();
-	});
+  beforeEach(() => {
+    pluginIframe = document.createElement("iframe");
+    pluginIframe.src = "";
+    pluginIframe.allowFullscreen = true;
+    body.appendChild(pluginIframe);
 
-	afterAll(() => {});
+    pluginIframe2 = document.createElement("iframe");
+    pluginIframe2.src = "";
+    pluginIframe2.allowFullscreen = true;
+    body.appendChild(pluginIframe2);
+  });
 
-	// The difference betwen Message and Request is that the Request expects a response from the other window object
-	it("should verify windowSocket and iframeSocket can send and receive MESSAGES", async function () {
-		const { windowSocket, iframeSocket } = createMessageSockets(
-			window,
-			pluginIframe.contentWindow as Window,
-		);
-		const cb = vi.fn();
-		windowSocket.addListener("test-window", cb);
-		iframeSocket.addListener("test-iframe", cb);
+  afterEach(() => {
+    body.removeChild(pluginIframe);
+    body.removeChild(pluginIframe2);
+    vi.clearAllMocks();
+  });
 
-		await iframeSocket.sendMessage("test-window", "hello world");
-		await windowSocket.sendMessage("test-iframe", "hello world");
+  it("Should provide a createMessageChannel method", async () => {
+    const { windowSocket, iframeSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
 
-		windowSocket.terminate();
-		expect(cb).toHaveBeenNthCalledWith(2, "hello world");
-	});
+    expect(windowSocket).toBeInstanceOf(PostMessageSocket);
+    expect(iframeSocket).toBeInstanceOf(PostMessageSocket);
 
-	it("should verify windowSocket and iframeSocket can send and receive REQUEST", async function () {
-		const { windowSocket, iframeSocket } = createMessageSockets(
-			pluginIframe.contentWindow as Window,
-			pluginIframe2.contentWindow as Window,
-		);
+    expect(windowSocket.createMessageChannel).toBeInstanceOf(Function);
+    expect(iframeSocket.createMessageChannel).toBeInstanceOf(Function);
+  });
 
-		const cb = vi.fn().mockReturnValue("hello from the other side");
-		windowSocket.addListener("test-window", cb);
-		iframeSocket.addListener("test-iframe", cb);
+  it("Should not process the postMessage if the source is not the targetWindow", async () => {
+    const { removeMessageEventFix } = createMessageSockets(
+      pluginIframe.contentWindow as Window,
+      pluginIframe2.contentWindow as Window,
+    );
 
-		const responseFromWindow = await iframeSocket.sendMessage(
-			"test-window",
-			"hello world",
-			true,
-		);
-		const responseFromIframe = await windowSocket.sendMessage(
-			"test-iframe",
-			"hello world",
-			true,
-		);
+    removeMessageEventFix(pluginIframe2.contentWindow as Window);
 
-		windowSocket.terminate();
-		expect(cb).toHaveBeenNthCalledWith(2, "hello world");
-		expect(responseFromWindow).toBe("hello from the other side");
-		expect(responseFromIframe).toBe("hello from the other side");
-	});
+    const event = new MessageEvent("message", {
+      data: {},
+    });
+    pluginIframe2.contentWindow?.dispatchEvent(event);
 
-	it("should send Success response to the partner window object when MESSAGE sent", async function () {
-		const { windowSocket, iframeSocket } = createMessageSockets(
-			pluginIframe.contentWindow as Window,
-			pluginIframe2.contentWindow as Window,
-		);
+    vi.runAllTimers();
 
-		const cb = vi.fn().mockReturnValue("hello from the other side");
-		windowSocket.addListener("test-window", cb);
-		iframeSocket.addListener("test-iframe", cb);
+    // Use a promise to handle the async error
+    expect(console.error).toHaveBeenCalledWith(ErrorStrings.NoSourceWindow);
+  });
 
-		const responseFromWindow = await iframeSocket.sendMessage(
-			"test-window",
-			"hello world",
-			// the last argument is to indicate if the message is a request or not
-			false,
-		);
+  it("Should not process any post message without channel set up for it", async () => {
+    createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
 
-		const responseFromIframe = await windowSocket.sendMessage(
-			"test-iframe",
-			"hello world",
-			// the last argument is to indicate if the message is a request or not
-			false,
-		);
+    const event = new MessageEvent("message", {
+      data: {
+        name: "test-window",
+        id: "1234",
+        payload: "hello world",
+        waitForResponse: false,
+      },
+    });
+    pluginIframe2.contentWindow?.dispatchEvent(event);
+    vi.runAllTimers();
 
-		windowSocket.terminate();
-		expect(responseFromWindow).toBe("Success");
-		expect(responseFromIframe).toBe("Success");
-	});
+    expect(console.error).toHaveBeenCalledWith(
+      ErrorStrings.NoMessageChannel + " test-window",
+    );
+  });
 
-	it("should return error if no custom event listener is found", async function () {
-		const { windowSocket, iframeSocket } = createMessageSockets(
-			pluginIframe.contentWindow as Window,
-			pluginIframe2.contentWindow as Window,
-		);
+  it("Should set up a listener for the message event if createMessageChannel is called", async () => {
+    const { windowSocket, iframeSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
 
-		const cb = vi.fn().mockReturnValue("hello from the other side");
-		windowSocket.addListener("test-window", cb);
-		iframeSocket.addListener("test-iframe", cb);
+    const cbWindow = vi.fn().mockReturnValue("hello back from window");
+    const cbIframe = vi.fn().mockReturnValue("hello back from iframe");
 
-		await expect(
-			iframeSocket.sendMessage(
-				"test-window-error",
-				"hello world",
-				// the last argument is to indicate if the message is a request or not
-				false,
-			),
-		).rejects.toThrowError(
-			"No listener found for the message type: test-window-error",
-		);
+    const testChannelWindow = windowSocket.createMessageChannel(
+      "test",
+      cbWindow,
+    );
 
-		windowSocket.terminate();
-	});
+    iframeSocket.createMessageChannel("test", cbIframe);
 
-	it("should remove listener if the listener is a once listener", async function () {
-		const { windowSocket, iframeSocket } = createMessageSockets(
-			pluginIframe.contentWindow as Window,
-			pluginIframe2.contentWindow as Window,
-		);
+    const answareFromIframe = testChannelWindow?.send("hello iframe");
 
-		const cb = vi.fn().mockReturnValue("hello from the other side");
-		windowSocket.addListener("test-window", cb, { once: true });
-		iframeSocket.addListener("test-iframe", cb, { once: true });
+    expect(answareFromIframe).toBe(ResultStrings.Success);
 
-		await iframeSocket.sendMessage("test-window", "hello world", false);
-		await windowSocket.sendMessage("test-iframe", "hello world", false);
+    vi.runAllTimers();
+    expect(cbIframe).toHaveBeenCalledWith("hello iframe");
+  });
 
-		windowSocket.terminate();
-		expect(cb).toHaveBeenCalledTimes(2);
-	});
+  it("Should verify windowSocket and iframeSocket can send and receive", async function () {
+    const { windowSocket, iframeSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
 
-	it("should not do anything if the event source is not the target window", async function () {
-		const { windowSocket, iframeSocket } = createMessageSockets(
-			window,
-			pluginIframe.contentWindow as Window,
-		);
+    const answers: string[] = [];
+    // Mock the callback to store the answers
+    const cb = vi.fn().mockImplementation((payload: string) => {
+      answers.push(payload);
+    });
 
-		const cb = vi.fn().mockReturnValue("hello from the other side");
-		windowSocket.addListener("test-window", cb);
-		iframeSocket.addListener("test-iframe", cb);
+    const windowChannel = windowSocket.createMessageChannel("test", cb);
+    const iframeChannel = iframeSocket.createMessageChannel("test", cb);
 
-		const event = new MessageEvent("message", {
-			data: JSON.stringify({
-				type: "message",
-				event: "test-window",
-				id: "1234",
-				payload: "hello world",
-			}),
-			// a different window object
-			source: { ...window },
-		});
+    windowChannel?.send("iframe");
+    vi.runAllTimers();
 
-		window.dispatchEvent(event);
+    expect(cb).toHaveBeenCalledWith("iframe");
+    expect(answers).toEqual(["iframe"]);
 
-		windowSocket.terminate();
-		expect(cb).not.toHaveBeenCalled();
-	});
+    iframeChannel?.send("window");
+    vi.runAllTimers();
 
-	it("should not do anything if the event origin is not the target window", async function () {
-		const { windowSocket, iframeSocket } = createMessageSockets(
-			window,
-			pluginIframe.contentWindow as Window,
-		);
-		const cb = vi.fn().mockReturnValue("hello from the other side");
+    expect(cb).toHaveBeenCalledWith("window");
+    expect(answers).toEqual(["iframe", "window"]);
+  });
 
-		windowSocket.addListener("test-window", cb);
-		iframeSocket.addListener("test-iframe", cb);
+  it("Should remove listener if the listener is a once listener", async function () {
+    const { windowSocket, iframeSocket } = createMessageSockets(
+      pluginIframe.contentWindow as Window,
+      pluginIframe2.contentWindow as Window,
+    );
 
-		const event = new MessageEvent("message", {
-			data: JSON.stringify({
-				type: "message",
-				event: "test-window",
-				id: "1234",
-				payload: "hello world",
-			}),
-			// a different window object
-			origin: "http://other-example:3000",
-		});
+    const cb = vi.fn().mockReturnValue("hello from the other side");
+    const windowChannel = windowSocket.createMessageChannel("test", cb, {
+      once: true,
+    });
+    const iframeChannel = iframeSocket.createMessageChannel("test", cb, {
+      once: true,
+    });
 
-		window.dispatchEvent(event);
+    iframeChannel?.send("hello world");
+    windowChannel?.send("hello world");
 
-		windowSocket.terminate();
-		expect(cb).not.toHaveBeenCalled();
-	});
+    vi.runAllTimers();
+
+    expect(cb).toHaveBeenNthCalledWith(1, "hello world");
+    expect(cb).toHaveBeenNthCalledWith(2, "hello world");
+    expect(cb).toHaveBeenCalledTimes(2);
+
+    expect(iframeChannel?.send("hello world")).toBe(ResultStrings.Success);
+    expect(windowChannel?.send("hello world")).toBe(ResultStrings.Success);
+
+    vi.runAllTimers();
+    expect(cb).toHaveBeenCalledTimes(2);
+  });
+
+  it("Should process a sendandWait message and return the response", async () => {
+    const { windowSocket, iframeSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
+
+    const msges: string[] = [];
+    const answareCb = (payload: string) => "Hello " + payload.split(" ").pop();
+    const cb = vi.fn().mockImplementation((payload: string) => {
+      msges.push(payload);
+      // return "hello " + payload's last word to simulate a response
+      return answareCb(payload);
+    });
+
+    const windowChannel = windowSocket.createMessageChannel("test", cb);
+    iframeSocket.createMessageChannel("test", cb);
+
+    const payloadFromWindow = "Hi, I am Window";
+
+    const answerPromise = windowChannel?.sendAndWait(payloadFromWindow);
+    vi.runAllTimers();
+
+    expect(cb).toHaveBeenCalledWith(payloadFromWindow);
+    expect(msges).toEqual([payloadFromWindow]);
+
+    answerPromise?.then((answer) => {
+      expect(answer).toBe(answareCb(payloadFromWindow));
+    });
+  });
+
+  it("Should have a terminate method", async () => {
+    const { windowSocket, iframeSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
+
+    expect(windowSocket.terminate).toBeInstanceOf(Function);
+    expect(iframeSocket.terminate).toBeInstanceOf(Function);
+  });
+
+  it("Should terminate the socket and remove the event listener", async () => {
+    const { windowSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
+
+    const cb = vi.fn();
+    const testChannel = windowSocket.createMessageChannel("test", cb);
+
+    windowSocket.terminate();
+
+    testChannel?.send("hello world");
+
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  it("Should not let create a channel if the socket is terminated", async () => {
+    const { windowSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
+
+    windowSocket.terminate();
+
+    const cb = vi.fn();
+    const channel = windowSocket.createMessageChannel("test", cb);
+
+    expect(channel).toBeNull();
+    expect(console.error).toHaveBeenCalledWith(ErrorStrings.SocketIsTerminated);
+  });
+
+  it("Should not handle wrong message format", async () => {
+    const { windowSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
+
+    const cb = vi.fn();
+    windowSocket.createMessageChannel("test", cb);
+
+    const event = new MessageEvent("message", {
+      data: {},
+    });
+
+    pluginIframe2.contentWindow?.dispatchEvent(event);
+    vi.runAllTimers();
+
+    expect(cb).not.toHaveBeenCalled();
+
+    // if not an object, we should not process the message
+
+    const event2 = new MessageEvent("message", {
+      data: "hello world",
+    });
+    pluginIframe2.contentWindow?.dispatchEvent(event2);
+    vi.runAllTimers();
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  it("Should not process postMessage when the socket terminated", async () => {
+    const { windowSocket, iframeSocket } = createMessageSockets(
+      pluginIframe2.contentWindow as Window,
+      pluginIframe.contentWindow as Window,
+    );
+
+    const cb = vi.fn().mockReturnValue("hello back from window");
+
+    windowSocket.createMessageChannel("test", cb);
+    const testChannel = iframeSocket.createMessageChannel("test", () => {});
+
+    windowSocket.terminate();
+
+    testChannel?.send("hello iframe");
+    vi.runAllTimers();
+
+    expect(cb).not.toHaveBeenCalled();
+  });
 });
