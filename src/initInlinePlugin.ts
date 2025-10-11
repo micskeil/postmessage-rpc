@@ -1,6 +1,22 @@
 import { createInitPlugin } from "./initPlugin.js";
+import type {
+  PluginConfig,
+  InlinePluginOptions,
+  InlinePlugin,
+} from "./types/index";
 
-export default async function initInlinePlugin({ data, settings, hooks }, { src, container, beforeInit = null, timeout }) {
+/**
+ * Initializes an inline plugin within a specified container.
+ *
+ * @param config - Plugin configuration with data, settings, and hooks
+ * @param options - Inline-specific options
+ * @returns Promise resolving to inline plugin interface
+ * @see InlinePlugin
+ */
+export default async function initInlinePlugin(
+  { data, settings, hooks }: PluginConfig,
+  { src, container, beforeInit, timeout }: InlinePluginOptions,
+): Promise<InlinePlugin> {
 	const { methods } = await createInitPlugin({
 		data,
 		settings,
@@ -12,7 +28,7 @@ export default async function initInlinePlugin({ data, settings, hooks }, { src,
 		beforeInit,
 	});
 
-	function destroy() {
+	function destroy(): void {
 		while (container.firstChild) {
 			container.firstChild.remove();
 		}

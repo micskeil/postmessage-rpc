@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Sync Monitor Plugin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #0a0e27;
+            font-family: 'Courier New', monospace;
+            color: #00ff00;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: rgba(0, 255, 0, 0.1);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .header h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .heartbeat {
+            width: 12px;
+            height: 12px;
+            background: #00ff00;
+            border-radius: 50%;
+            animation: pulse 1s ease-in-out infinite;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        .stat-box {
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .stat-label {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .message-log {
+            flex: 1;
+            background: rgba(0, 255, 0, 0.05);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .message-log::-webkit-scrollbar {
+            width: 8px;
+        }
+        .message-log::-webkit-scrollbar-track {
+            background: rgba(0, 255, 0, 0.1);
+            border-radius: 4px;
+        }
+        .message-log::-webkit-scrollbar-thumb {
+            background: #00ff00;
+            border-radius: 4px;
+        }
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 5px 8px;
+            background: rgba(0, 255, 0, 0.03);
+            border-left: 3px solid transparent;
+            border-radius: 3px;
+        }
+        .log-entry.received {
+            border-left-color: #00ffff;
+            color: #00ffff;
+        }
+        .log-entry.sent {
+            border-left-color: #ffff00;
+            color: #ffff00;
+        }
+        .log-entry.heartbeat {
+            border-left-color: #00ff00;
+            opacity: 0.6;
+        }
+        .timestamp {
+            opacity: 0.5;
+            margin-right: 10px;
+        }
+        .performance-indicator {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>
+            <div class="heartbeat"></div>
+            🔊 Plugin Sync Monitor
+        </h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">Messages Received</div>
+                <div class="stat-value" id="received-count">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Messages Sent</div>
+                <div class="stat-value" id="sent-count">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Avg Processing Time</div>
+                <div class="stat-value" id="avg-time">0ms</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Heartbeat Interval</div>
+                <div class="stat-value" id="interval-display">2000ms</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Uptime</div>
+                <div class="stat-value" id="uptime">0s</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Status</div>
+                <div class="stat-value" style="color: #00ff00;">🔊¢ Active</div>
+            </div>
+        </div>
+        <div class="performance-indicator">
+            Plugin iframe running on: <span id="origin">-</span>
+        </div>
+    </div>
+
+    <div class="message-log" id="message-log">
+        <div class="log-entry" style="border-left-color: #00ff00;">
+            [SYSTEM] Plugin initialized and ready for communication...
+        </div>
+    </div>
+
+    <script type="module">
+        const providePlugin = (await import("../../src/providePlugin.ts")).default;
+
+        const messageLog = document.getElementById("message-log");
+        const receivedCountEl = document.getElementById("received-count");
+        const sentCountEl = document.getElementById("sent-count");
+        const avgTimeEl = document.getElementById("avg-time");
+        const intervalDisplayEl = document.getElementById("interval-display");
+        const uptimeEl = document.getElementById("uptime");
+        const originEl = document.getElementById("origin");
+
+        let receivedCount = 0;
+        let sentCount = 0;
+        let processingTimes = [];
+        let heartbeatInterval = 2000;
+        let heartbeatTimer = null;
+        const startTime = Date.now();
+
+        originEl.textContent = window.location.origin;
+
+        function formatTimestamp() {
+            const now = new Date();
+            return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0')}`;
+        }
+
+        function addLogEntry(message, type = 'default') {
+            const entry = document.createElement("div");
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `<span class="timestamp">[${formatTimestamp()}]</span>${message}`;
+            messageLog.appendChild(entry);
+            messageLog.scrollTop = messageLog.scrollHeight;
+
+            // Limit log entries to prevent memory issues
+            if (messageLog.children.length > 100) {
+                messageLog.removeChild(messageLog.firstChild);
+            }
+        }
+
+        function updateStats() {
+            receivedCountEl.textContent = receivedCount;
+            sentCountEl.textContent = sentCount;
+
+            if (processingTimes.length > 0) {
+                const avg = processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length;
+                avgTimeEl.textContent = avg.toFixed(2) + "ms";
+            }
+
+            const uptime = Math.floor((Date.now() - startTime) / 1000);
+            uptimeEl.textContent = uptime + "s";
+        }
+
+        function startHeartbeat() {
+            if (heartbeatTimer) {
+                clearInterval(heartbeatTimer);
+            }
+
+            heartbeatTimer = setInterval(async () => {
+                const timestamp = Date.now();
+                await iface.hooks.onHeartbeat(timestamp);
+                sentCount++;
+                addLogEntry(`🔊 Heartbeat sent (timestamp: ${timestamp})`, 'heartbeat');
+                updateStats();
+            }, heartbeatInterval);
+        }
+
+        const methods = {
+            ping: async () => {
+                const receiveTime = Date.now();
+                receivedCount++;
+                addLogEntry(`🔊¥ PING received from parent`, 'received');
+
+                // Simulate processing time
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
+
+                const processingTime = Date.now() - receiveTime;
+                processingTimes.push(processingTime);
+                if (processingTimes.length > 20) {
+                    processingTimes.shift();
+                }
+
+                const responseTime = Date.now();
+                await iface.hooks.onPong(responseTime);
+                sentCount++;
+                addLogEntry(`🔊¤ PONG sent (processing: ${processingTime.toFixed(2)}ms)`, 'sent');
+
+                await iface.hooks.onMessageProcessed('ping', processingTime);
+                updateStats();
+            },
+
+            sendBurst: async (count) => {
+                receivedCount++;
+                addLogEntry(`🔊¥ Burst request received: ${count} messages`, 'received');
+
+                for (let i = 0; i < count; i++) {
+                    const startTime = Date.now();
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                    const processingTime = Date.now() - startTime;
+
+                    processingTimes.push(processingTime);
+                    if (processingTimes.length > 20) {
+                        processingTimes.shift();
+                    }
+
+                    await iface.hooks.onMessageProcessed(`burst-${i}`, processingTime);
+                    sentCount++;
+                }
+
+                addLogEntry(`🔊¤ Burst complete: ${count} messages processed`, 'sent');
+                updateStats();
+            },
+
+            setHeartbeatInterval: async (ms) => {
+                receivedCount++;
+                heartbeatInterval = ms;
+                intervalDisplayEl.textContent = ms + "ms";
+                addLogEntry(`🔊¥ Heartbeat interval changed to ${ms}ms`, 'received');
+                startHeartbeat();
+                updateStats();
+            }
+        };
+
+        const iface = await providePlugin({
+            hooks: ["onHeartbeat", "onPong", "onMessageProcessed"],
+            methods
+        });
+
+        addLogEntry(`✅ Connected to parent window`, 'default');
+
+        // Start heartbeat
+        startHeartbeat();
+
+        // Update uptime every second
+        setInterval(updateStats, 1000);
+    </script>
+</body>
+</html>

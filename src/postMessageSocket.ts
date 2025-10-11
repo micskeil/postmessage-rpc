@@ -352,15 +352,13 @@ export default class PostMessageSocket {
 
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.errorCallback(`Error in callback for "${name}": ${errorMessage}`);
 
       // Send error response if caller is waiting
       if (waitForResponse) {
-        listener.messageChannel.send(
-          { error: errorMessage },
-          { msgId: id },
-        );
+        listener.messageChannel.send({ error: errorMessage }, { msgId: id });
       }
     }
   }

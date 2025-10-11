@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Color Echo Plugin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            transition: background-color 0.5s ease;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+        }
+        .info-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 500px;
+        }
+        .info-panel h2 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .info-panel p {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .color-display {
+            margin: 20px 0;
+        }
+        .color-box {
+            width: 100%;
+            height: 100px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            transition: all 0.5s ease;
+        }
+        .label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .hex-value {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            color: #333;
+            font-weight: bold;
+            padding: 10px 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .transform-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        .waiting-message {
+            color: #999;
+            font-style: italic;
+            margin-top: 20px;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .animate-in {
+            animation: pulse 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-panel">
+        <h2>🔊¨ Color Echo Chamber</h2>
+        <p>Plugin iframe that receives colors and transforms them</p>
+
+        <div class="color-display">
+            <div class="label">Received Color</div>
+            <div class="color-box" id="received-color">
+                Waiting...
+            </div>
+            <div class="hex-value" id="received-hex">-</div>
+        </div>
+
+        <div class="transform-label" id="transform-label">
+            Transform: <span id="transform-type">None</span>
+        </div>
+
+        <div class="color-display">
+            <div class="label">Transformed Color (Sent Back)</div>
+            <div class="color-box" id="transformed-color">
+                Waiting...
+            </div>
+            <div class="hex-value" id="transformed-hex">-</div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">Colors Received</div>
+                <div class="stat-value" id="received-count">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Colors Sent</div>
+                <div class="stat-value" id="sent-count">0</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const providePlugin = (await import("../../src/providePlugin.ts")).default;
+
+        const receivedColorBox = document.getElementById("received-color");
+        const transformedColorBox = document.getElementById("transformed-color");
+        const receivedHex = document.getElementById("received-hex");
+        const transformedHex = document.getElementById("transformed-hex");
+        const transformType = document.getElementById("transform-type");
+        const receivedCountEl = document.getElementById("received-count");
+        const sentCountEl = document.getElementById("sent-count");
+
+        let receivedCount = 0;
+        let sentCount = 0;
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + [r, g, b].map(x => {
+                const hex = Math.max(0, Math.min(255, Math.round(x))).toString(16);
+                return hex.length === 1 ? "0" + hex : hex;
+            }).join("");
+        }
+
+        function invertColor(hex) {
+            const rgb = hexToRgb(hex);
+            if (!rgb) return hex;
+            return rgbToHex(255 - rgb.r, 255 - rgb.g, 255 - rgb.b);
+        }
+
+        function darkenColor(hex, percent = 30) {
+            const rgb = hexToRgb(hex);
+            if (!rgb) return hex;
+            const factor = (100 - percent) / 100;
+            return rgbToHex(rgb.r * factor, rgb.g * factor, rgb.b * factor);
+        }
+
+        function lightenColor(hex, percent = 30) {
+            const rgb = hexToRgb(hex);
+            if (!rgb) return hex;
+            const factor = percent / 100;
+            return rgbToHex(
+                rgb.r + (255 - rgb.r) * factor,
+                rgb.g + (255 - rgb.g) * factor,
+                rgb.b + (255 - rgb.b) * factor
+            );
+        }
+
+        function complementaryColor(hex) {
+            const rgb = hexToRgb(hex);
+            if (!rgb) return hex;
+
+            // Convert to HSL
+            const r = rgb.r / 255;
+            const g = rgb.g / 255;
+            const b = rgb.b / 255;
+
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+
+            // Rotate hue by 180 degrees (complementary)
+            h = (h + 0.5) % 1;
+
+            // Convert back to RGB
+            function hueToRgb(p, q, t) {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            }
+
+            let r2, g2, b2;
+            if (s === 0) {
+                r2 = g2 = b2 = l;
+            } else {
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r2 = hueToRgb(p, q, h + 1/3);
+                g2 = hueToRgb(p, q, h);
+                b2 = hueToRgb(p, q, h - 1/3);
+            }
+
+            return rgbToHex(r2 * 255, g2 * 255, b2 * 255);
+        }
+
+        function getContrastColor(hex) {
+            const rgb = hexToRgb(hex);
+            if (!rgb) return '#000000';
+            const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+            return brightness > 128 ? '#000000' : '#ffffff';
+        }
+
+        const methods = {
+            receiveColor: async (color, transform = 'invert') => {
+                receivedCount++;
+                receivedCountEl.textContent = receivedCount;
+
+                // Update received color display
+                receivedColorBox.style.background = color;
+                receivedColorBox.style.color = getContrastColor(color);
+                receivedColorBox.textContent = color.toUpperCase();
+                receivedColorBox.classList.add('animate-in');
+                setTimeout(() => receivedColorBox.classList.remove('animate-in'), 500);
+                receivedHex.textContent = color.toUpperCase();
+
+                // Update transform label
+                transformType.textContent = transform.charAt(0).toUpperCase() + transform.slice(1);
+
+                // Apply transformation
+                let transformedColor;
+                switch (transform) {
+                    case 'invert':
+                        transformedColor = invertColor(color);
+                        break;
+                    case 'darken':
+                        transformedColor = darkenColor(color);
+                        break;
+                    case 'lighten':
+                        transformedColor = lightenColor(color);
+                        break;
+                    case 'complement':
+                        transformedColor = complementaryColor(color);
+                        break;
+                    default:
+                        transformedColor = color;
+                }
+
+                // Update transformed color display
+                transformedColorBox.style.background = transformedColor;
+                transformedColorBox.style.color = getContrastColor(transformedColor);
+                transformedColorBox.textContent = transformedColor.toUpperCase();
+                transformedColorBox.classList.add('animate-in');
+                setTimeout(() => transformedColorBox.classList.remove('animate-in'), 500);
+                transformedHex.textContent = transformedColor.toUpperCase();
+
+                // Update body background to transformed color
+                document.body.style.background = `linear-gradient(135deg, ${color} 0%, ${transformedColor} 100%)`;
+
+                // Send transformed color back to parent
+                sentCount++;
+                sentCountEl.textContent = sentCount;
+                await iface.hooks.onColorTransformed(color, transformedColor);
+            }
+        };
+
+        const iface = await providePlugin({
+            hooks: ["onColorTransformed"],
+            methods
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Puppet Master Plugin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            position: relative;
+        }
+        #puppet {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        #info h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        #info div {
+            font-size: 12px;
+            color: #666;
+            margin: 5px 0;
+        }
+        .boundary-hit {
+            animation: shake 0.3s ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>🔊® Puppet Master Plugin</h3>
+        <div>Position: <span id="position">-</span></div>
+        <div>Commands: <span id="commandCount">0</span></div>
+    </div>
+    <div id="puppet">🤖</div>
+
+    <script type="module">
+        const providePlugin = (await import("../../src/providePlugin.ts")).default;
+
+        const puppet = document.getElementById("puppet");
+        const positionDisplay = document.getElementById("position");
+        const commandCountDisplay = document.getElementById("commandCount");
+
+        let position = { x: window.innerWidth / 2 - 30, y: window.innerHeight / 2 - 30 };
+        let size = 60;
+        let commandCount = 0;
+        const MOVE_STEP = 20;
+
+        function updatePuppet() {
+            puppet.style.left = position.x + "px";
+            puppet.style.top = position.y + "px";
+            puppet.style.width = size + "px";
+            puppet.style.height = size + "px";
+            puppet.style.fontSize = (size / 2) + "px";
+            positionDisplay.textContent = `${Math.round(position.x)}, ${Math.round(position.y)}`;
+        }
+
+        function checkBoundary() {
+            let hitEdge = null;
+            const maxX = window.innerWidth - size;
+            const maxY = window.innerHeight - size;
+
+            if (position.x < 0) {
+                position.x = 0;
+                hitEdge = "left";
+            }
+            if (position.x > maxX) {
+                position.x = maxX;
+                hitEdge = "right";
+            }
+            if (position.y < 0) {
+                position.y = 0;
+                hitEdge = "top";
+            }
+            if (position.y > maxY) {
+                position.y = maxY;
+                hitEdge = "bottom";
+            }
+
+            if (hitEdge) {
+                puppet.classList.add("boundary-hit");
+                setTimeout(() => puppet.classList.remove("boundary-hit"), 300);
+                return hitEdge;
+            }
+            return null;
+        }
+
+        const methods = {
+            move: async (direction) => {
+                commandCount++;
+                commandCountDisplay.textContent = commandCount;
+
+                switch (direction) {
+                    case "up":
+                        position.y -= MOVE_STEP;
+                        break;
+                    case "down":
+                        position.y += MOVE_STEP;
+                        break;
+                    case "left":
+                        position.x -= MOVE_STEP;
+                        break;
+                    case "right":
+                        position.x += MOVE_STEP;
+                        break;
+                }
+
+                const hitEdge = checkBoundary();
+                updatePuppet();
+
+                if (hitEdge) {
+                    await iface.hooks.onBoundaryHit(hitEdge);
+                } else {
+                    await iface.hooks.onPositionChanged(
+                        Math.round(position.x),
+                        Math.round(position.y)
+                    );
+                }
+            },
+
+            setColor: async (color) => {
+                commandCount++;
+                commandCountDisplay.textContent = commandCount;
+                puppet.style.background = color;
+            },
+
+            setSize: async (newSize) => {
+                commandCount++;
+                commandCountDisplay.textContent = commandCount;
+
+                const centerX = position.x + size / 2;
+                const centerY = position.y + size / 2;
+
+                size = newSize;
+                position.x = centerX - size / 2;
+                position.y = centerY - size / 2;
+
+                checkBoundary();
+                updatePuppet();
+                await iface.hooks.onPositionChanged(
+                    Math.round(position.x),
+                    Math.round(position.y)
+                );
+            },
+
+            reset: async () => {
+                commandCount = 0;
+                commandCountDisplay.textContent = commandCount;
+                position = { x: window.innerWidth / 2 - 30, y: window.innerHeight / 2 - 30 };
+                size = 60;
+                puppet.style.background = "#ff6b6b";
+                updatePuppet();
+                await iface.hooks.onPositionChanged(
+                    Math.round(position.x),
+                    Math.round(position.y)
+                );
+            }
+        };
+
+        const iface = await providePlugin({
+            hooks: ["onPositionChanged", "onBoundaryHit"],
+            methods
+        });
+
+        // Initialize position
+        updatePuppet();
+        await iface.hooks.onPositionChanged(
+            Math.round(position.x),
+            Math.round(position.y)
+        );
+
+        // Handle window resize
+        window.addEventListener("resize", () => {
+            checkBoundary();
+            updatePuppet();
+        });
+    </script>
+</body>
+</html>

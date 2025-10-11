@@ -15,8 +15,9 @@ import { ErrorStrings } from "./types";
 import { useFixedMessageEvent } from "../test/utils/fixEvents";
 import { ResultStrings } from "./types";
 
-// Not using the real console.error to avoid cluttering the test output
+// Mock console.error to avoid cluttering test output
 console.error = vi.fn();
+
 const createMessageSockets = (window: Window, iframe: Window) => {
   const { addMessageEventFix, removeMessageEventFix } = useFixedMessageEvent();
   const windowSocket = new PostMessageSocket(window, iframe);
@@ -57,7 +58,7 @@ describe("postMessageSocket", () => {
     vi.clearAllMocks();
   });
 
-  it("Should provide a createMessageChannel method", async () => {
+  it("should provide a createMessageChannel method", async () => {
     const { windowSocket, iframeSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -70,7 +71,7 @@ describe("postMessageSocket", () => {
     expect(iframeSocket.createMessageChannel).toBeInstanceOf(Function);
   });
 
-  it("Should not process the postMessage if the source is not the targetWindow", async () => {
+  it("should not process the postMessage if the source is not the targetWindow", async () => {
     const { removeMessageEventFix } = createMessageSockets(
       pluginIframe.contentWindow as Window,
       pluginIframe2.contentWindow as Window,
@@ -89,7 +90,7 @@ describe("postMessageSocket", () => {
     expect(console.error).toHaveBeenCalledWith(ErrorStrings.NoSourceWindow);
   });
 
-  it("Should not process any post message without channel set up for it", async () => {
+  it("should not process any post message without channel set up for it", async () => {
     createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -103,6 +104,7 @@ describe("postMessageSocket", () => {
         waitForResponse: false,
       },
     });
+
     pluginIframe2.contentWindow?.dispatchEvent(event);
     vi.runAllTimers();
 
@@ -111,7 +113,7 @@ describe("postMessageSocket", () => {
     );
   });
 
-  it("Should set up a listener for the message event if createMessageChannel is called", async () => {
+  it("should set up a listener for the message event if createMessageChannel is called", async () => {
     const { windowSocket, iframeSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -135,7 +137,7 @@ describe("postMessageSocket", () => {
     expect(cbIframe).toHaveBeenCalledWith("hello iframe");
   });
 
-  it("Should verify windowSocket and iframeSocket can send and receive", async function () {
+  it("should verify windowSocket and iframeSocket can send and receive", async function () {
     const { windowSocket, iframeSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -163,7 +165,7 @@ describe("postMessageSocket", () => {
     expect(answers).toEqual(["iframe", "window"]);
   });
 
-  it("Should remove listener if the listener is a once listener", async function () {
+  it("should remove listener if the listener is a once listener", async function () {
     const { windowSocket, iframeSocket } = createMessageSockets(
       pluginIframe.contentWindow as Window,
       pluginIframe2.contentWindow as Window,
@@ -193,7 +195,7 @@ describe("postMessageSocket", () => {
     expect(cb).toHaveBeenCalledTimes(2);
   });
 
-  it("Should process a sendandWait message and return the response", async () => {
+  it("should process a sendandWait message and return the response", async () => {
     const { windowSocket, iframeSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -223,7 +225,7 @@ describe("postMessageSocket", () => {
     });
   });
 
-  it("Should have a terminate method", async () => {
+  it("should have a terminate method", async () => {
     const { windowSocket, iframeSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -233,7 +235,7 @@ describe("postMessageSocket", () => {
     expect(iframeSocket.terminate).toBeInstanceOf(Function);
   });
 
-  it("Should terminate the socket and remove the event listener", async () => {
+  it("should terminate the socket and remove the event listener", async () => {
     const { windowSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -249,7 +251,7 @@ describe("postMessageSocket", () => {
     expect(cb).not.toHaveBeenCalled();
   });
 
-  it("Should not let create a channel if the socket is terminated", async () => {
+  it("should not let create a channel if the socket is terminated", async () => {
     const { windowSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -264,7 +266,7 @@ describe("postMessageSocket", () => {
     expect(console.error).toHaveBeenCalledWith(ErrorStrings.SocketIsTerminated);
   });
 
-  it("Should not handle wrong message format", async () => {
+  it("should not handle wrong message format", async () => {
     const { windowSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -292,7 +294,7 @@ describe("postMessageSocket", () => {
     expect(cb).not.toHaveBeenCalled();
   });
 
-  it("Should not process postMessage when the socket terminated", async () => {
+  it("should not process postMessage when the socket terminated", async () => {
     const { windowSocket, iframeSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -311,7 +313,7 @@ describe("postMessageSocket", () => {
     expect(cb).not.toHaveBeenCalled();
   });
 
-  it("Should validate origin and reject messages from wrong origin", async () => {
+  it("should validate origin and reject messages from wrong origin", async () => {
     const { windowSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -341,7 +343,7 @@ describe("postMessageSocket", () => {
     );
   });
 
-  it("Should handle async callbacks correctly", async () => {
+  it("should handle async callbacks correctly", async () => {
     const { windowSocket, iframeSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -355,7 +357,10 @@ describe("postMessageSocket", () => {
     });
 
     windowSocket.createMessageChannel("asyncTest", asyncCb);
-    const testChannel = iframeSocket.createMessageChannel("asyncTest", () => {});
+    const testChannel = iframeSocket.createMessageChannel(
+      "asyncTest",
+      () => {},
+    );
 
     const responsePromise = testChannel?.sendAndWait("test data");
     vi.runAllTimers();
@@ -367,7 +372,7 @@ describe("postMessageSocket", () => {
     });
   });
 
-  it("Should handle callback errors and send error response", async () => {
+  it("should handle callback errors and send error response", async () => {
     const { windowSocket, iframeSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -378,7 +383,10 @@ describe("postMessageSocket", () => {
     });
 
     windowSocket.createMessageChannel("errorTest", errorCb);
-    const testChannel = iframeSocket.createMessageChannel("errorTest", () => {});
+    const testChannel = iframeSocket.createMessageChannel(
+      "errorTest",
+      () => {},
+    );
 
     const responsePromise = testChannel?.sendAndWait("trigger error");
     vi.runAllTimers();
@@ -389,12 +397,12 @@ describe("postMessageSocket", () => {
     );
 
     responsePromise?.then((response) => {
-      // Should receive error response
+      // should receive error response
       expect(response).toEqual({ error: "Callback failed!" });
     });
   });
 
-  it("Should handle non-Error exceptions in callbacks", async () => {
+  it("should handle non-Error exceptions in callbacks", async () => {
     const { windowSocket, iframeSocket } = createMessageSockets(
       pluginIframe2.contentWindow as Window,
       pluginIframe.contentWindow as Window,
@@ -422,7 +430,7 @@ describe("postMessageSocket", () => {
     });
   });
 
-  it("Should properly clean up event listeners on terminate", async () => {
+  it("should properly clean up event listeners on terminate", async () => {
     const parentWindow = pluginIframe2.contentWindow as Window;
     const { windowSocket, removeMessageEventFix } = createMessageSockets(
       parentWindow,

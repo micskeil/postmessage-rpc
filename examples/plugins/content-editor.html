@@ -1,5 +1,6 @@
 <html>
     <head>
+    <meta charset="UTF-8">
         <title>Inline AD example</title>
     </head>
     <body>
@@ -12,7 +13,7 @@
         <button id="closeButton">Close (cancel)</button>
         <script>
             (async function() {
-                const createProvidePlugin = (await import("../../src/providePlugin.js")).default;
+                const createProvidePlugin = (await import("../../src/providePlugin.ts")).default;
 
                 const data = {
                     title: "Default title",

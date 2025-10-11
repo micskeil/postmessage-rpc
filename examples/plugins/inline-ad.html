@@ -1,5 +1,6 @@
 <html>
     <head>
+    <meta charset="UTF-8">
         <title>Inline AD example</title>
     </head>
     <body>
@@ -10,7 +11,7 @@
         <button id="closeButton">I don't wanna see ads anymore.</button>
         <script>
             (async function() {
-                const providePlugin = (await import("../../src/providePlugin.js")).default;
+                const providePlugin = (await import("../../src/providePlugin.ts")).default;
 
                 const data = {
                     id: "default id",

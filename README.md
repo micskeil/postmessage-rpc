@@ -225,10 +225,105 @@ await pluginInterface.methods.updateHooks({ hooks: { onDelete }, resetHooks: tru
 // after the method call the activeHooks should be equal with ["onDelete", "error"];
 ```
 
-## Example
+## Examples
 
-You can run the [examples](examples), with static server
-```js
-$ npm -g install static-server
-$ static-server -c "*" -zp 8080
+The repository includes several interactive examples demonstrating different aspects of the plugin interface:
+
+### Running the Examples
+
+You can run the [examples](examples) with static server:
+```bash
+$ npm install
+$ npm run examples
 ```
+
+Or manually with static-server:
+```bash
+$ npm -g install static-server
+$ static-server -c "*" -zp 8765
+```
+
+Then open your browser to:
+- `http://localhost:8765/examples/` - Main examples page with all demos
+- `http://localhost:8765/examples/puppet-master-example.html`
+- `http://localhost:8765/examples/sync-monitor-example.html`
+- `http://localhost:8765/examples/color-echo-example.html`
+- `http://localhost:8765/examples/content-editor-example.html`
+- `http://localhost:8765/examples/inline-ad-example.html`
+
+### Example 1: Puppet Master (Control Demo)
+
+**Files:** [`puppet-master-example.html`](examples/puppet-master-example.html) + [`plugins/puppet-master.html`](examples/plugins/puppet-master.html)
+
+Demonstrates remote control patterns and real-time state synchronization between parent and plugin.
+
+**Features:**
+- Directional controls (arrow keys or buttons) to move a puppet inside the plugin iframe
+- Real-time position tracking (x, y coordinates)
+- Color and size controls from parent window
+- Boundary collision detection with visual feedback
+- Live statistics: total moves, boundary hits
+
+**Communication flow:**
+- **Parent → Plugin methods:** `move(direction)`, `setColor(color)`, `setSize(size)`, `reset()`
+- **Plugin → Parent hooks:** `onPositionChanged(x, y)`, `onBoundaryHit(edge)`
+
+This example clearly shows the iframe boundary - controls are in the parent window, while the puppet lives and moves inside the plugin iframe.
+
+### Example 2: Sync Monitor Dashboard (Technical Demo)
+
+**Files:** [`sync-monitor-example.html`](examples/sync-monitor-example.html) + [`plugins/sync-monitor.html`](examples/plugins/sync-monitor.html)
+
+Visualizes the underlying postMessage communication mechanism with developer-focused metrics and monitoring.
+
+**Features:**
+- Live message log with timestamps showing every communication
+- Ping/pong latency measurement with visual chart (last 20 pings)
+- Burst messaging to test performance (5/20/100 messages)
+- Adjustable heartbeat interval (500-5000ms)
+- Message counters and processing time metrics
+- Terminal-style UI for both parent and plugin
+
+**Communication flow:**
+- **Parent → Plugin methods:** `ping()`, `sendBurst(count)`, `setHeartbeatInterval(ms)`
+- **Plugin → Parent hooks:** `onHeartbeat(timestamp)`, `onPong(timestamp)`, `onMessageProcessed(id, time)`
+
+This example makes the postMessage communication visible, showing exactly when and how messages flow between windows.
+
+### Example 3: Color Echo Chamber (Visual Demo)
+
+**Files:** [`color-echo-example.html`](examples/color-echo-example.html) + [`plugins/color-echo.html`](examples/plugins/color-echo.html)
+
+Demonstrates bidirectional data transformation with a visually striking interface.
+
+**Features:**
+- Color picker with 16 quick-select presets
+- Four transform types: Invert, Darken, Lighten, Complement
+- Visual color comparison (sent vs received)
+- Transformation history grid (last 50 transformations)
+- Plugin background animates with gradient based on colors
+- Click history items to reuse colors
+
+**Communication flow:**
+- **Parent → Plugin methods:** `receiveColor(color, transformType)`
+- **Plugin → Parent hooks:** `onColorTransformed(originalColor, transformedColor)`
+
+This example makes the iframe boundary unmistakable - the parent sends a color, the plugin transforms it, and sends a different color back. The visual difference makes communication obvious.
+
+### Example 4: Content Editor
+
+**Files:** [`content-editor-example.html`](examples/content-editor-example.html) + [`plugins/content-editor.html`](examples/plugins/content-editor.html)
+
+A practical example showing a typical use case: editing content in a fullscreen plugin with various animation options.
+
+**Features:**
+- Fullscreen overlay with customizable show/hide animations
+- Multiple animation types: slide (from all directions), fade, scale
+- Splash screen support
+- Content persistence between show/hide
+
+### Example 5: Inline Ad
+
+**Files:** [`inline-ad-example.html`](examples/inline-ad-example.html) + [`plugins/inline-ad.html`](examples/plugins/inline-ad.html)
+
+Demonstrates inline plugin usage where the plugin is embedded within the page layout rather than fullscreen.
