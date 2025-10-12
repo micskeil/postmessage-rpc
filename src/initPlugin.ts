@@ -15,7 +15,7 @@ import type {
  * @param config - Plugin configuration
  * @param config.data - Initial data to pass to the plugin
  * @param config.settings - Plugin-specific settings
- * @param config.hooks - Callback functions the parent provides to the plugin
+ * @param config.parentCallbacks - Callback functions the parent provides to the plugin
  *
  * @param options - Iframe creation options
  * @param options.container - DOM element where the iframe will be appended
@@ -32,7 +32,7 @@ import type {
  *   {
  *     data: { userId: 123 },
  *     settings: { theme: 'dark' },
- *     hooks: {
+ *     parentCallbacks: {
  *       onSave: async (content) => console.log('Saved:', content),
  *       onClose: async () => console.log('Closed')
  *     }
@@ -55,7 +55,7 @@ import type {
  * ```
  */
 export function createInitPlugin(
-  { data, settings, hooks }: PluginConfig,
+  { data, settings, parentCallbacks = {} }: PluginConfig,
   { container, src, beforeInit, timeout }: IframeOptions,
 ): Promise<InitializedPlugin> {
   const pluginIframe = document.createElement("iframe");
@@ -75,16 +75,21 @@ export function createInitPlugin(
 
   container.appendChild(pluginIframe);
 
-  // Ensure contentWindow is available before initializing
-  if (!pluginIframe.contentWindow) {
+  // FIX: Ensure contentWindow is available before initializing
+  // In some cases, contentWindow may not be immediately available after appendChild
+  const contentWindow = pluginIframe.contentWindow;
+
+  if (!contentWindow) {
+    // If contentWindow is still not available, it's a critical error
+    container.removeChild(pluginIframe);
     return Promise.reject(new Error("Failed to access iframe contentWindow"));
   }
 
   return initPlugin(
-    { data, settings, hooks },
+    { data, settings, parentCallbacks },
     {
       currentWindow: window,
-      targetWindow: pluginIframe.contentWindow,
+      targetWindow: contentWindow,
       timeout,
       container,
     },
@@ -99,8 +104,8 @@ export function createInitPlugin(
  * ## Initialization Protocol
  * 1. Creates PostMessageSocket between parent and plugin windows
  * 2. Waits for plugin to send "domReady" signal
- * 3. Sends "handshakeComplete" signal to plugin
- * 4. Sends "init" message with data, settings, and hook names
+ * 3. Registers parent callback channels (so plugin can call them immediately)
+ * 4. Sends "init" message with data, settings, and callback names
  * 5. Receives list of method names from plugin
  * 6. Creates async wrapper functions for each method
  * 7. Returns interface with methods and terminate function
@@ -118,12 +123,12 @@ export function createInitPlugin(
  * - Waits for and returns the response
  *
  * ## Special Methods
- * - `updateHooks`: Intercepts and processes hook updates before sending to plugin
+ * - `updateParentCallbacks`: Intercepts and processes callback updates before sending to plugin
  *
  * @param config - Plugin initialization configuration
  * @param config.data - Initial data to pass to the plugin
  * @param config.settings - Plugin-specific settings
- * @param config.hooks - Map of hook names to callback functions
+ * @param config.parentCallbacks - Map of callback names to callback functions
  *
  * @param windowConfig - Window communication configuration
  * @param windowConfig.currentWindow - The parent window that will communicate with the plugin
@@ -144,7 +149,7 @@ export function createInitPlugin(
  *   {
  *     data: { userId: 123, document: {...} },
  *     settings: { theme: 'dark', locale: 'en-US' },
- *     hooks: {
+ *     parentCallbacks: {
  *       onSave: async (content) => {
  *         await saveToBackend(content);
  *       },
@@ -169,22 +174,37 @@ export function createInitPlugin(
  * plugin.terminate();
  * ```
  */
-function initPlugin(
-  { data, settings, hooks }: PluginConfig,
+export function initPlugin(
+  { data, settings, parentCallbacks = {} }: PluginConfig,
   { currentWindow, targetWindow, timeout = null, container }: WindowConfig,
 ): Promise<InitializedPlugin> {
   const messageSocket = new PostMessageSocket(currentWindow, targetWindow);
 
   return new Promise((resolve, reject) => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    /**
+     * Cleanup helper function to ensure all resources are properly released.
+     * Clears timeout, terminates socket, and optionally removes container.
+     */
+    function cleanup(error?: Error) {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      messageSocket.terminate();
+      if (error && container?.parentNode) {
+        container.remove();
+      }
+    }
+
     // Set up listener for domReady message from plugin
     messageSocket.createMessageChannel("domReady", onDomReady, { once: true });
 
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
     if (timeout) {
       timeoutId = setTimeout(() => {
-        messageSocket.terminate();
-        if (container?.remove && typeof container.remove === "function") {
+        cleanup();
+        if (container?.parentNode) {
           container.remove();
         }
         reject(
@@ -200,71 +220,76 @@ function initPlugin(
      * Sends initialization data and creates method proxies.
      */
     async function onDomReady() {
-      // Send handshake completion signal to plugin
-      const handshakeChannel = messageSocket.createMessageChannel(
-        "handshakeComplete",
-        () => {},
-      );
+      try {
+        // CRITICAL: Register parent callbacks BEFORE sending init
+        // This ensures they're ready when plugin tries to call them
+        Object.entries(parentCallbacks).forEach(
+          ([callbackName, callbackFn]) => {
+            messageSocket.createMessageChannel(callbackName, callbackFn);
+          },
+        );
 
-      if (!handshakeChannel) {
-        reject(new Error("Failed to create handshakeComplete channel"));
-        return;
+        // Send init data to plugin and wait for method list response
+        const initChannel = messageSocket.createMessageChannel<
+          { data: unknown; settings: unknown; parentCallbacks: string[] },
+          string[]
+        >("init", () => [] as string[]);
+
+        if (!initChannel) {
+          cleanup();
+          reject(new Error("Failed to create init channel"));
+          return;
+        }
+
+        const answer = await initChannel.sendAndWait({
+          data,
+          settings,
+          parentCallbacks: Object.keys(parentCallbacks),
+        });
+
+        // Handle the case where answer is ResultStrings.Success instead of actual data
+        if (typeof answer === "string") {
+          cleanup();
+          reject(new Error("Plugin did not return method list"));
+          return;
+        }
+
+        const methods: Record<string, Method> = {};
+
+        // Create async wrapper for each plugin method
+        answer.forEach((type: string) => {
+          methods[type] = async (payload: unknown) => {
+            // Create a channel for each method call
+            const methodChannel = messageSocket.createMessageChannel<
+              unknown,
+              unknown
+            >(type, () => {});
+
+            if (!methodChannel) {
+              throw new Error(
+                `Failed to create message channel for method: ${type}`,
+              );
+            }
+
+            return await methodChannel.sendAndWait(payload);
+          };
+        });
+
+        // Clear timeout on successful initialization
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+
+        resolve({
+          methods,
+          terminate: messageSocket.terminate.bind(messageSocket),
+        });
+      } catch (error) {
+        // Ensure cleanup on any error
+        cleanup(error instanceof Error ? error : new Error(String(error)));
+        reject(error);
       }
-
-      handshakeChannel.send({});
-
-      // Send init data to plugin and wait for method list response
-      const initChannel = messageSocket.createMessageChannel<
-        { data: unknown; settings: unknown; hooks: string[] },
-        string[]
-      >("init", () => [] as string[]);
-
-      if (!initChannel) {
-        reject(new Error("Failed to create init channel"));
-        return;
-      }
-
-      const answer = await initChannel.sendAndWait({
-        data,
-        settings,
-        hooks: Object.keys(hooks),
-      });
-
-      // Handle the case where answer is ResultStrings.Success instead of actual data
-      if (typeof answer === "string") {
-        reject(new Error("Plugin did not return method list"));
-        return;
-      }
-
-      const methods: Record<string, Method> = {};
-
-      // Create async wrapper for each plugin method
-      answer.forEach((type: string) => {
-        methods[type] = async (payload: unknown) => {
-          // Create a channel for each method call
-          const methodChannel = messageSocket.createMessageChannel<
-            unknown,
-            unknown
-          >(type, () => {});
-
-          if (!methodChannel) {
-            throw new Error(
-              `Failed to create message channel for method: ${type}`,
-            );
-          }
-
-          return await methodChannel.sendAndWait(payload);
-        };
-      });
-
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
-      }
-
-      resolve({
-        methods,
-        terminate: messageSocket.terminate.bind(messageSocket),
-      });
     }
   });
 }

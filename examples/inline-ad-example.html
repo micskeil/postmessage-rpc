@@ -61,7 +61,7 @@
                 const adPlugin = await sdk.initInlineAdPlugin({ 
                     data, 
                     settings, 
-                    hooks: {
+                    parentCallbacks: {
                         onNextButtonClicked: async () => {
                             //await new Promise(resolve => setTimeout(resolve, 500)); // simulate latency
 

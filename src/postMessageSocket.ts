@@ -1,13 +1,12 @@
-import {
+import type {
   CustomEventListener,
-  ErrorStrings,
   EventName,
   Message,
   MessageChannel,
-  ResultStrings,
   SafeResult,
   SuccessResult,
 } from "./types/index";
+import { ErrorStrings, ResultStrings } from "./types/index";
 
 /**
  * PostMessageSocket provides secure, bidirectional communication between two window instances
@@ -187,6 +186,7 @@ export default class PostMessageSocket {
         payload,
         waitForResponse: true,
       });
+      // Wait for the response to arrive and be handled in onMessage
       const result = (await this.handleAnswerMessage(id)) as Promise<
         SuccessResult<U>
       >;
@@ -345,6 +345,7 @@ export default class PostMessageSocket {
 
       // If sender used sendAndWait(), send the result back
       if (waitForResponse) {
+        // Send back the result to the waiting sender
         listener.messageChannel.send(result, {
           msgId: id, // Reuse same ID so sender can correlate response
         });

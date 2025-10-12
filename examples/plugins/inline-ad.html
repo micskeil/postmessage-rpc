@@ -9,9 +9,9 @@
         <button id="readMoreButton">Read more</button>
         <button id="nextButton">Next</button>
         <button id="closeButton">I don't wanna see ads anymore.</button>
-        <script>
+        <script type="module">
+            import { providePlugin } from "../../dist/pluginInterface.js";
             (async function() {
-                const providePlugin = (await import("../../src/providePlugin.ts")).default;
 
                 const data = {
                     id: "default id",
@@ -41,7 +41,7 @@
             
                 const iface = await providePlugin({
                     settings,
-                    hooks: ["onNextButtonClicked", "onReadMoreButtonClicked", "onClose"],
+                    parentCallbacks: ["onNextButtonClicked", "onReadMoreButtonClicked", "onClose"],
                     methods: {
                         updateData,
                         updateSettings
@@ -52,7 +52,7 @@
                 updateSettings(iface.settings);
 
                 document.getElementById("readMoreButton").onclick = async () => {
-                    const response = await iface.hooks.onReadMoreButtonClicked({ id: data.id });
+                    const response = await iface.parentCallbacks.onReadMoreButtonClicked({ id: data.id });
 
                     updateData({
                         ...data,
@@ -61,7 +61,7 @@
                 };
 
                 document.getElementById("nextButton").onclick = async () => {
-                    const response = await iface.hooks.onNextButtonClicked();
+                    const response = await iface.parentCallbacks.onNextButtonClicked();
 
                     updateData({
                         ...data,
@@ -70,7 +70,7 @@
                 };
 
                 document.getElementById("closeButton").onclick = async () => {
-                    iface.hooks.onClose();
+                    iface.parentCallbacks.onClose();
                 };
             }());
         </script>

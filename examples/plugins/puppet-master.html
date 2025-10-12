@@ -68,7 +68,7 @@
     <div id="puppet">🤖</div>
 
     <script type="module">
-        const providePlugin = (await import("../../src/providePlugin.ts")).default;
+        import { providePlugin } from "../../dist/pluginInterface.js";
 
         const puppet = document.getElementById("puppet");
         const positionDisplay = document.getElementById("position");
@@ -142,9 +142,9 @@
                 updatePuppet();
 
                 if (hitEdge) {
-                    await iface.hooks.onBoundaryHit(hitEdge);
+                    await iface.parentCallbacks.onBoundaryHit(hitEdge);
                 } else {
-                    await iface.hooks.onPositionChanged(
+                    await iface.parentCallbacks.onPositionChanged(
                         Math.round(position.x),
                         Math.round(position.y)
                     );
@@ -170,7 +170,7 @@
 
                 checkBoundary();
                 updatePuppet();
-                await iface.hooks.onPositionChanged(
+                await iface.parentCallbacks.onPositionChanged(
                     Math.round(position.x),
                     Math.round(position.y)
                 );
@@ -183,7 +183,7 @@
                 size = 60;
                 puppet.style.background = "#ff6b6b";
                 updatePuppet();
-                await iface.hooks.onPositionChanged(
+                await iface.parentCallbacks.onPositionChanged(
                     Math.round(position.x),
                     Math.round(position.y)
                 );
@@ -191,13 +191,13 @@
         };
 
         const iface = await providePlugin({
-            hooks: ["onPositionChanged", "onBoundaryHit"],
+            parentCallbacks: ["onPositionChanged", "onBoundaryHit"],
             methods
         });
 
         // Initialize position
         updatePuppet();
-        await iface.hooks.onPositionChanged(
+        await iface.parentCallbacks.onPositionChanged(
             Math.round(position.x),
             Math.round(position.y)
         );

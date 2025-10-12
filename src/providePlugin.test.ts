@@ -30,7 +30,10 @@ describe("providePlugin", () => {
 	const body: HTMLElement = document.querySelector("body")!;
 
 	beforeAll(() => {
-		vi.useFakeTimers();
+		vi.useFakeTimers({
+			// Allow postMessage and other DOM APIs to run normally
+			toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"],
+		});
 	});
 
 	afterAll(() => {
@@ -42,6 +45,31 @@ describe("providePlugin", () => {
 		pluginIframe.src = "";
 		pluginIframe.allowFullscreen = true;
 		body.appendChild(pluginIframe);
+
+		// Mock postMessage to make it work in jsdom
+		const pluginWindow = pluginIframe.contentWindow as Window;
+
+		// Mock iframe.contentWindow.postMessage to dispatch on iframe
+		const originalIframePost = pluginWindow.postMessage.bind(pluginWindow);
+		pluginWindow.postMessage = function (message: any, targetOrigin: string) {
+			const event = new MessageEvent("message", {
+				data: message,
+				origin: window.location.origin || "http://localhost",
+				source: window,
+			});
+			pluginWindow.dispatchEvent(event);
+		};
+
+		// Mock window.postMessage to dispatch on window
+		const originalWindowPost = window.postMessage.bind(window);
+		window.postMessage = function (message: any, targetOrigin: string) {
+			const event = new MessageEvent("message", {
+				data: message,
+				origin: pluginWindow.location.origin || "http://localhost",
+				source: pluginWindow,
+			});
+			window.dispatchEvent(event);
+		};
 	});
 
 	afterEach(() => {
@@ -64,7 +92,7 @@ describe("providePlugin", () => {
 		// Start providePlugin in the plugin window
 		const pluginPromise = providePlugin(
 			{
-				hooks: [],
+				parentCallbacks: [],
 				methods: {},
 			},
 			pluginWindow,
@@ -80,6 +108,7 @@ describe("providePlugin", () => {
 	});
 
 	it("should register methods as message channels", async () => {
+		console.log("TEST START: register methods");
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
@@ -89,10 +118,18 @@ describe("providePlugin", () => {
 
 		const testMethod = vi.fn().mockReturnValue("method result");
 
+		// Create parent socket FIRST to listen for domReady
+		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		parentSocket.createMessageChannel("domReady", () => {});
+
+		const initChannel = parentSocket.createMessageChannel("init", () => {
+			return ["testMethod"]; // Tell plugin which methods are available
+		});
+
 		// Start providePlugin in the plugin window
 		const pluginPromise = providePlugin(
 			{
-				hooks: [],
+				parentCallbacks: [],
 				methods: {
 					testMethod,
 				},
@@ -101,12 +138,18 @@ describe("providePlugin", () => {
 			parentWindow,
 		);
 
+		// Send init message to complete handshake
+		initChannel.sendAndWait({
+			data: {},
+			settings: {},
+			parentCallbacks: { error: vi.fn() },
+		});
+
 		vi.runAllTimers();
+		await pluginPromise;
 
-		// Call the method from parent
-		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		// Now call the method from parent
 		const testChannel = parentSocket.createMessageChannel("testMethod", () => {});
-
 		const resultPromise = testChannel.sendAndWait("test payload");
 		vi.runAllTimers();
 
@@ -127,7 +170,7 @@ describe("providePlugin", () => {
 
 		const pluginPromise = providePlugin(
 			{
-				hooks: ["onSave"],
+				parentCallbacks: ["onSave"],
 				methods: {},
 			},
 			pluginWindow,
@@ -149,21 +192,21 @@ describe("providePlugin", () => {
 		const initPromise = initChannel.sendAndWait({
 			data: { test: "data" },
 			settings: { test: "setting" },
-			hooks: { onSave: vi.fn(), error: vi.fn() },
+			parentCallbacks: { onSave: vi.fn(), error: vi.fn() },
 		});
 
 		vi.runAllTimers();
 
 		const plugin = await pluginPromise;
 
-		expect(plugin.hooks).toHaveProperty("onSave");
-		expect(plugin.hooks).toHaveProperty("error");
+		expect(plugin.parentCallbacks).toHaveProperty("onSave");
+		expect(plugin.parentCallbacks).toHaveProperty("error");
 
 		// Clean up
 		parentSocket.terminate();
 	});
 
-	it("should resolve with data, settings, hooks, and terminate", async () => {
+	it("should resolve with data, settings, parentCallbacks, and terminate", async () => {
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
@@ -173,7 +216,7 @@ describe("providePlugin", () => {
 
 		const pluginPromise = providePlugin(
 			{
-				hooks: ["onSave", "onClose"],
+				parentCallbacks: ["onSave", "onClose"],
 				methods: {},
 			},
 			pluginWindow,
@@ -201,7 +244,7 @@ describe("providePlugin", () => {
 		initChannel.sendAndWait({
 			data: { userId: 123 },
 			settings: { theme: "dark" },
-			hooks: { onSave: onSaveHook, onClose: onCloseHook, error: vi.fn() },
+			parentCallbacks: { onSave: onSaveHook, onClose: onCloseHook, error: vi.fn() },
 		});
 
 		vi.runAllTimers();
@@ -210,7 +253,7 @@ describe("providePlugin", () => {
 
 		expect(plugin).toHaveProperty("data");
 		expect(plugin).toHaveProperty("settings");
-		expect(plugin).toHaveProperty("hooks");
+		expect(plugin).toHaveProperty("parentCallbacks");
 		expect(plugin).toHaveProperty("terminate");
 
 		expect(plugin.data).toEqual({ userId: 123 });
@@ -233,7 +276,7 @@ describe("providePlugin", () => {
 
 		const pluginPromise = providePlugin(
 			{
-				hooks: [],
+				parentCallbacks: [],
 				methods: {},
 				validator,
 			},
@@ -259,7 +302,7 @@ describe("providePlugin", () => {
 		initChannel.sendAndWait({
 			data: { required: "value" },
 			settings: {},
-			hooks: { error: vi.fn() },
+			parentCallbacks: { error: vi.fn() },
 		});
 
 		vi.runAllTimers();
@@ -290,7 +333,7 @@ describe("providePlugin", () => {
 
 		const pluginPromise = providePlugin(
 			{
-				hooks: [],
+				parentCallbacks: [],
 				methods: {},
 				validator,
 			},
@@ -316,7 +359,7 @@ describe("providePlugin", () => {
 		initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			hooks: { error: vi.fn() },
+			parentCallbacks: { error: vi.fn() },
 		});
 
 		vi.runAllTimers();
@@ -339,47 +382,40 @@ describe("providePlugin", () => {
 		addMessageEventFix(parentWindow, pluginWindow);
 		addMessageEventFix(pluginWindow, parentWindow);
 
+		// Create parent socket FIRST to listen for domReady
+		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		parentSocket.createMessageChannel("domReady", () => {});
+
+		const onSaveHook = vi.fn().mockReturnValue("saved successfully");
+		parentSocket.createMessageChannel("onSave", onSaveHook);
+		parentSocket.createMessageChannel("error", vi.fn());
+
+		const initChannel = parentSocket.createMessageChannel("init", () => {
+			return [];
+		});
+
+		// Start providePlugin in the plugin window
 		const pluginPromise = providePlugin(
 			{
-				hooks: ["onSave"],
+				parentCallbacks: ["onSave"],
 				methods: {},
 			},
 			pluginWindow,
 			parentWindow,
 		);
 
-		vi.runAllTimers();
-
-		// Send init message from parent
-		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
-		parentSocket.createMessageChannel("handshakeComplete", () => {});
-		parentSocket.createMessageChannel("domReady", () => {});
-
-		const onSaveHook = vi.fn().mockReturnValue("saved successfully");
-
-		parentSocket.createMessageChannel("onSave", onSaveHook);
-		parentSocket.createMessageChannel("error", vi.fn());
-
-		parentSocket.createMessageChannel("init", () => {
-			return [];
-		});
-
-		const initChannel = parentSocket.createMessageChannel("init", () => {
-			return [];
-		});
-
+		// Send init message to complete handshake
 		initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			hooks: { onSave: onSaveHook, error: vi.fn() },
+			parentCallbacks: { onSave: onSaveHook, error: vi.fn() },
 		});
 
 		vi.runAllTimers();
-
 		const plugin = await pluginPromise;
 
 		// Call the hook from plugin side
-		const saveResult = plugin.hooks.onSave({ content: "test content" });
+		const saveResult = plugin.parentCallbacks.onSave({ content: "test content" });
 		vi.runAllTimers();
 
 		await expect(saveResult).resolves.toBe("saved successfully");
@@ -399,7 +435,7 @@ describe("providePlugin", () => {
 
 		const pluginPromise = providePlugin(
 			{
-				hooks: [],
+				parentCallbacks: [],
 				methods: {},
 			},
 			pluginWindow,
@@ -424,7 +460,7 @@ describe("providePlugin", () => {
 		initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			hooks: { error: vi.fn() },
+			parentCallbacks: { error: vi.fn() },
 		});
 
 		vi.runAllTimers();

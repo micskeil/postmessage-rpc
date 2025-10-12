@@ -161,7 +161,7 @@
     </div>
 
     <script type="module">
-        const providePlugin = (await import("../../src/providePlugin.ts")).default;
+        import { providePlugin } from "../../dist/pluginInterface.js";
 
         const messageLog = document.getElementById("message-log");
         const receivedCountEl = document.getElementById("received-count");
@@ -218,7 +218,7 @@
 
             heartbeatTimer = setInterval(async () => {
                 const timestamp = Date.now();
-                await iface.hooks.onHeartbeat(timestamp);
+                await iface.parentCallbacks.onHeartbeat(timestamp);
                 sentCount++;
                 addLogEntry(`🔊 Heartbeat sent (timestamp: ${timestamp})`, 'heartbeat');
                 updateStats();
@@ -241,11 +241,11 @@
                 }
 
                 const responseTime = Date.now();
-                await iface.hooks.onPong(responseTime);
+                await iface.parentCallbacks.onPong(responseTime);
                 sentCount++;
                 addLogEntry(`🔊¤ PONG sent (processing: ${processingTime.toFixed(2)}ms)`, 'sent');
 
-                await iface.hooks.onMessageProcessed('ping', processingTime);
+                await iface.parentCallbacks.onMessageProcessed('ping', processingTime);
                 updateStats();
             },
 
@@ -263,7 +263,7 @@
                         processingTimes.shift();
                     }
 
-                    await iface.hooks.onMessageProcessed(`burst-${i}`, processingTime);
+                    await iface.parentCallbacks.onMessageProcessed(`burst-${i}`, processingTime);
                     sentCount++;
                 }
 
@@ -282,7 +282,7 @@
         };
 
         const iface = await providePlugin({
-            hooks: ["onHeartbeat", "onPong", "onMessageProcessed"],
+            parentCallbacks: ["onHeartbeat", "onPong", "onMessageProcessed"],
             methods
         });
 

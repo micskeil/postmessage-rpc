@@ -159,7 +159,7 @@
     </div>
 
     <script type="module">
-        const providePlugin = (await import("../../src/providePlugin.ts")).default;
+        import { providePlugin } from "../../dist/pluginInterface.js";
 
         const receivedColorBox = document.getElementById("received-color");
         const transformedColorBox = document.getElementById("transformed-color");
@@ -321,12 +321,12 @@
                 // Send transformed color back to parent
                 sentCount++;
                 sentCountEl.textContent = sentCount;
-                await iface.hooks.onColorTransformed(color, transformedColor);
+                await iface.parentCallbacks.onColorTransformed(color, transformedColor);
             }
         };
 
         const iface = await providePlugin({
-            hooks: ["onColorTransformed"],
+            parentCallbacks: ["onColorTransformed"],
             methods
         });
     </script>

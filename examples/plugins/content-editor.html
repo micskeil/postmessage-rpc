@@ -11,9 +11,9 @@
         <button id="resetButton">Reset</button>
         <button id="saveButton">Save</button>
         <button id="closeButton">Close (cancel)</button>
-        <script>
+        <script type="module">
+            import { providePlugin } from "../../dist/pluginInterface.js";
             (async function() {
-                const createProvidePlugin = (await import("../../src/providePlugin.ts")).default;
 
                 const data = {
                     title: "Default title",
@@ -39,9 +39,9 @@
                 }
 
             
-                const iface = await createProvidePlugin({
+                const iface = await providePlugin({
                     settings,
-                    hooks: ["onResetButtonClicked", "onSaveButtonClicked", "onClose"],
+                    parentCallbacks: ["onResetButtonClicked", "onSaveButtonClicked", "onClose"],
                     methods: {
                         updateData,
                         updateSettings
@@ -52,7 +52,7 @@
                 updateSettings(iface.settings);
 
                 document.getElementById("resetButton").onclick = async () => {
-                    const response = await iface.hooks.onResetButtonClicked();
+                    const response = await iface.parentCallbacks.onResetButtonClicked();
 
                     updateData({
                         ...data,
@@ -64,11 +64,11 @@
                 document.getElementById("saveButton").onclick = async () => {
                     data.title = document.getElementById("title").value;
                     data.description = document.getElementById("description").value;
-                    await iface.hooks.onSaveButtonClicked(data);
+                    await iface.parentCallbacks.onSaveButtonClicked(data);
                 };
 
                 document.getElementById("closeButton").onclick = async () => {
-                    iface.hooks.onClose();
+                    iface.parentCallbacks.onClose();
                 };
             }());
         </script>

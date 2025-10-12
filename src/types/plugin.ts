@@ -3,7 +3,7 @@
  */
 
 /**
- * Type definition for plugin methods and hook callbacks.
+ * Type definition for plugin methods and parent callback functions.
  * Can be sync or async, can return a value or void.
  */
 export type Method = (payload: unknown) => Promise<unknown> | unknown | void;
@@ -23,8 +23,8 @@ export interface PluginConfig {
   data: unknown;
   /** Plugin settings and configuration */
   settings: unknown;
-  /** Map of hook names to callback functions that the parent provides */
-  hooks: Record<string, Method>;
+  /** Map of callback names to functions that the parent provides to the plugin */
+  parentCallbacks: Record<string, Method>;
 }
 
 /**
@@ -76,8 +76,8 @@ export interface ProvidedPlugin {
   data: unknown;
   /** Settings received from the parent */
   settings: unknown;
-  /** Map of hook names to functions that call back to the parent */
-  hooks: Record<string, Method>;
+  /** Map of callback names to functions that call back to the parent */
+  parentCallbacks: Record<string, Method>;
   /** Function to terminate the plugin communication and cleanup resources */
   terminate: () => void;
 }

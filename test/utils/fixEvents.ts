@@ -5,15 +5,18 @@ export const useFixedMessageEvent = () => {
 
   const messageEventFixFunction = (self: Window, partner: Window) => {
     return (event: MessageEvent) => {
+      console.log("message event received:", event);
+      // if the event has no origin or source, it is likely from jsdom
       // if no source exists, replace it with partner
       // Use a default origin for jsdom since partner.origin might also be empty
       if (!event.origin || event.origin === "" || event.origin === "null") {
         event.stopImmediatePropagation();
 
         // Use a fixed origin to prevent infinite loops when partner.origin is also empty
-        const fixedOrigin = partner.origin && partner.origin !== "" && partner.origin !== "null"
-          ? partner.origin
-          : "http://localhost";
+        const fixedOrigin =
+          partner.origin && partner.origin !== "" && partner.origin !== "null"
+            ? partner.origin
+            : "http://localhost";
 
         const fixedEvent = new MessageEvent("message", {
           data: event.data,

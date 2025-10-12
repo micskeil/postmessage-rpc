@@ -74,7 +74,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-1",
@@ -110,7 +110,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-2",
@@ -141,7 +141,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-3",
@@ -184,7 +184,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-4",
@@ -226,7 +226,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-5",
@@ -269,7 +269,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-6",
@@ -310,7 +310,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-7",
@@ -345,7 +345,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-8",
@@ -383,7 +383,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-9",
@@ -418,7 +418,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-10",
@@ -457,7 +457,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-11a",
@@ -472,7 +472,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-11b",
@@ -526,7 +526,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: { splashScreenUrl: "https://example.com/splash.html" },
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-12",
@@ -567,7 +567,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-13",
@@ -603,7 +603,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: { splashScreenUrl: "https://example.com/splash.html" },
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-14",
@@ -648,7 +648,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-15",
@@ -686,7 +686,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-16",
@@ -720,7 +720,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-17",
@@ -750,7 +750,7 @@ describe("initFullscreenPlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				id: "test-plugin-18",

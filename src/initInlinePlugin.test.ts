@@ -62,7 +62,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: { test: "data" },
 				settings: { test: "setting" },
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -112,7 +112,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -167,7 +167,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -219,7 +219,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -275,7 +275,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -300,7 +300,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -342,7 +342,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -370,7 +370,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: testData,
 				settings: testSettings,
-				hooks: {},
+				parentCallbacks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -406,7 +406,7 @@ describe("initInlinePlugin", () => {
 			expect(initCb).toHaveBeenCalledWith({
 				data: testData,
 				settings: testSettings,
-				hooks: [],
+				parentCallbacks: [],
 			});
 
 			pluginSocket.terminate();

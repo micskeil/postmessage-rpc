@@ -10,13 +10,13 @@ let currentZIndex = 0;
 /**
  * Initializes a fullscreen plugin with custom animations and optional splash screen.
  *
- * @param config - Plugin configuration with data, settings, and hooks
+ * @param config - Plugin configuration with data, settings, and parentCallbacks
  * @param options - Fullscreen-specific options
  * @returns Promise resolving to fullscreen plugin interface
  * @see FullscreenPlugin
  */
 export default async function initFullscreenPlugin(
-  { data, settings, hooks }: PluginConfig,
+  { data, settings, parentCallbacks = {} }: PluginConfig,
   { id, src, parentElem, beforeInit, timeout }: FullscreenPluginOptions,
 ): Promise<FullscreenPlugin> {
 	let container: HTMLDivElement | null = document.createElement("div");
@@ -149,7 +149,7 @@ export default async function initFullscreenPlugin(
 		};
 	}
 
-	const { methods } = await createInitPlugin({ data, settings, hooks }, { container: parent, src, beforeInit: _beforeInit, timeout });
+	const { methods } = await createInitPlugin({ data, settings, parentCallbacks }, { container: parent, src, beforeInit: _beforeInit, timeout });
 
 	if (!container) {
 		throw new Error("Container was destroyed during initialization");

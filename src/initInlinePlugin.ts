@@ -8,19 +8,19 @@ import type {
 /**
  * Initializes an inline plugin within a specified container.
  *
- * @param config - Plugin configuration with data, settings, and hooks
+ * @param config - Plugin configuration with data, settings, and parentCallbacks
  * @param options - Inline-specific options
  * @returns Promise resolving to inline plugin interface
  * @see InlinePlugin
  */
 export default async function initInlinePlugin(
-  { data, settings, hooks }: PluginConfig,
+  { data, settings, parentCallbacks = {} }: PluginConfig,
   { src, container, beforeInit, timeout }: InlinePluginOptions,
 ): Promise<InlinePlugin> {
 	const { methods } = await createInitPlugin({
 		data,
 		settings,
-		hooks,
+		parentCallbacks,
 	}, {
 		container,
 		src,
