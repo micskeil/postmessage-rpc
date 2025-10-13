@@ -1,4 +1,4 @@
-import PostMessageSocket from "./postMessageSocket.js";
+import PostMessageSocket from "./postMessageSocket";
 import type {
   Method,
   PluginConfig,

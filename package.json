@@ -28,8 +28,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "vite build",
-    "build:watch": "vite build --watch",
+    "build": "BUILD_LIB=1 vite build",
+    "build:watch": "BUILD_LIB=1 vite build --watch",
     "dev": "vite --port 8765",
     "examples": "vite --port 8765 --open /examples/",
     "lint": "npx eslint . --ext .js,.mjs,.cjs,.json",

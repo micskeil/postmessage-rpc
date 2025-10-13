@@ -1,4 +1,4 @@
-import { createInitPlugin } from "./initPlugin.js";
+import { createInitPlugin } from "./initPlugin";
 import type {
   PluginConfig,
   FullscreenPluginOptions,

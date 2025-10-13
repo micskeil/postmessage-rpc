@@ -54,9 +54,7 @@ describe("initPlugin", () => {
     // Set up domReady channel
     const domReadyChannel = pluginSocket.createMessageChannel(
       "domReady",
-      () => {
-        console.log("Plugin: domReady received, sending init request");
-      },
+      () => {},
     );
 
     // Set up handshakeComplete listener
@@ -91,9 +89,24 @@ describe("initPlugin", () => {
 
   afterAll(() => {});
 
-  beforeEach(() => {});
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
 
   afterEach(() => {
+    // Clear all pending timers BEFORE cleanup
+    vi.clearAllTimers();
+
+    // Clean up all sockets FIRST
+    createdSockets.forEach((socket) => {
+      try {
+        socket.terminate();
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
+    });
+    createdSockets.clear();
+
     // IMPORTANT: Remove event fixes BEFORE removing iframes
     // This ensures the contentWindow is still accessible
     createdIframes.forEach((iframe) => {
@@ -105,16 +118,6 @@ describe("initPlugin", () => {
     // Also remove the window fix so next test can add a fresh one
     removeMessageEventFix(window);
 
-    // Clean up all sockets
-    createdSockets.forEach((socket) => {
-      try {
-        socket.terminate();
-      } catch (e) {
-        // Ignore errors during cleanup
-      }
-    });
-    createdSockets.clear();
-
     // Now remove iframes from DOM
     createdIframes.forEach((iframe) => {
       if (iframe.parentNode) {
@@ -124,15 +127,16 @@ describe("initPlugin", () => {
     createdIframes.clear();
 
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   describe("createInitPlugin", () => {
-    it.only("should create an iframe with correct attributes and styles", async () => {
+    it("should create an iframe with correct attributes and styles", async () => {
       const container = document.createElement("div");
       body.appendChild(container);
 
       // Start initialization
-      const plugin = await createInitPlugin(
+      const pluginPromise = createInitPlugin(
         {
           data: { test: "data" },
           settings: { theme: "dark" },
@@ -160,14 +164,10 @@ describe("initPlugin", () => {
 
       // Simulate plugin ready
       sendDomReady();
+      await vi.advanceTimersByTimeAsync(100);
 
-      vi.runAllTimers();
-      console.log("Test: Timers run after domReady sent");
-      vi.runAllTimers();
-      console.log("Test: Timers run after second run");
-      vi.runAllTimers();
-      await vi.runAllTimersAsync();
-      await vi.runAllTimersAsync();
+      // Now await the plugin initialization
+      const plugin = await pluginPromise;
 
       // Verify iframe attributes
       expect(iframe.src).toContain("test-plugin.com");
@@ -222,7 +222,7 @@ describe("initPlugin", () => {
       );
 
       sendDomReady();
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(100);
 
       const plugin = await pluginPromise;
       plugin.terminate();
@@ -312,7 +312,7 @@ describe("initPlugin", () => {
       );
 
       sendDomReady();
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(100);
 
       const plugin = await pluginPromise;
 
@@ -331,12 +331,12 @@ describe("initPlugin", () => {
 
       // Test calling methods
       const dataPromise = plugin.methods.getData({});
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(10);
       const dataResult = await dataPromise;
       expect(dataResult).toEqual({ content: "test data" });
 
       const updatePromise = plugin.methods.updateContent({ text: "new" });
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(10);
       const updateResult = await updatePromise;
       expect(updateResult).toEqual({ success: true, updated: { text: "new" } });
 
@@ -375,7 +375,7 @@ describe("initPlugin", () => {
       );
 
       sendDomReady();
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(100);
 
       const plugin = await pluginPromise;
 
@@ -385,7 +385,7 @@ describe("initPlugin", () => {
         () => {},
       );
       const savePromise = onSaveChannel?.sendAndWait({ content: "data" });
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(10);
       const saveResult = await savePromise;
 
       expect(onSave).toHaveBeenCalledWith({ content: "data" });
@@ -423,7 +423,7 @@ describe("initPlugin", () => {
       );
 
       sendDomReady();
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(100);
 
       const plugin = await pluginPromise;
 
@@ -539,7 +539,7 @@ describe("initPlugin", () => {
       // Even after long time, should work
       vi.advanceTimersByTime(10000);
       sendDomReady();
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(100);
 
       const plugin = await pluginPromise;
       expect(plugin).toBeDefined();
@@ -567,6 +567,9 @@ describe("initPlugin", () => {
         },
       );
 
+      // Immediately attach catch handler to prevent unhandled rejection
+      pluginPromise.catch(() => {});
+
       const iframe = container.querySelector("iframe") as HTMLIFrameElement;
       createdIframes.add(iframe);
       applyEventFixes(iframe);
@@ -588,11 +591,18 @@ describe("initPlugin", () => {
       pluginSocket.createMessageChannel("init", () => ResultStrings.Success);
 
       domReadyChannel?.send({});
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(100);
 
-      await expect(pluginPromise).rejects.toThrow(
-        "Plugin did not return method list",
-      );
+      // Catch the rejection to prevent unhandled promise rejection
+      try {
+        await pluginPromise;
+        expect.fail("Should have thrown an error");
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(
+          "Plugin did not return method list",
+        );
+      }
 
       // Verify cleanup happened - iframe should be removed
       const stillExists = container.querySelector("iframe");
@@ -618,6 +628,9 @@ describe("initPlugin", () => {
         },
       );
 
+      // Immediately attach catch handler to prevent unhandled rejection
+      pluginPromise.catch(() => {});
+
       const iframe = container.querySelector("iframe") as HTMLIFrameElement;
       createdIframes.add(iframe);
       applyEventFixes(iframe);
@@ -640,9 +653,17 @@ describe("initPlugin", () => {
       });
 
       domReadyChannel?.send({});
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(100);
 
-      await expect(pluginPromise).rejects.toThrow();
+      // Catch the rejection to prevent unhandled promise rejection
+      try {
+        await pluginPromise;
+        expect.fail("Should have thrown an error");
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        // When plugin throws during init, the error is transformed
+        expect((error as Error).message).toContain("forEach");
+      }
 
       // Cleanup if still exists
       const stillExists = container.querySelector("iframe");
@@ -668,24 +689,44 @@ describe("initPlugin", () => {
         },
       );
 
+      // Immediately attach catch handler to prevent unhandled rejection
+      pluginPromise.catch(() => {});
+
       const iframe = container.querySelector("iframe") as HTMLIFrameElement;
       createdIframes.add(iframe);
       applyEventFixes(iframe);
       expect(iframe).not.toBeNull();
 
-      const { pluginSocket, sendDomReady } = setupPluginResponse(
+      // Create plugin socket manually (don't use setupPluginResponse helper)
+      const pluginSocket = new PostMessageSocket(
         iframe.contentWindow as Window,
         window,
-        { methods: [] },
       );
+      createdSockets.add(pluginSocket);
 
-      // Override init to return wrong type
+      const domReadyChannel = pluginSocket.createMessageChannel(
+        "domReady",
+        () => {},
+      );
+      pluginSocket.createMessageChannel("handshakeComplete", () => {}, {
+        once: true,
+      });
+      // Return string instead of array to trigger error
       pluginSocket.createMessageChannel("init", () => ResultStrings.Success);
 
-      sendDomReady();
-      vi.runAllTimers();
+      domReadyChannel?.send({});
+      await vi.advanceTimersByTimeAsync(100);
 
-      await expect(pluginPromise).rejects.toBeDefined();
+      // Catch the rejection to prevent unhandled promise rejection
+      try {
+        await pluginPromise;
+        expect.fail("Should have thrown an error");
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(
+          "Plugin did not return method list",
+        );
+      }
 
       // Verify iframe was removed (or clean it up)
       const stillExists = container.querySelector("iframe");
@@ -737,20 +778,20 @@ describe("initPlugin", () => {
       );
 
       sendDomReady();
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(100);
 
       const plugin = await pluginPromise;
 
       // Test calculate
       const calcPromise = plugin.methods.calculate({ a: 5, b: 3 });
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(10);
       const calcResult = await calcPromise;
       expect(calculateMock).toHaveBeenCalledWith({ a: 5, b: 3 });
       expect(calcResult).toBe(8);
 
       // Test transform
       const transformPromise = plugin.methods.transform({ text: "hello" });
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(10);
       const transformResult = await transformPromise;
       expect(transformMock).toHaveBeenCalledWith({ text: "hello" });
       expect(transformResult).toEqual({ result: "HELLO" });
@@ -796,14 +837,14 @@ describe("initPlugin", () => {
       );
 
       sendDomReady();
-      vi.runAllTimers();
+      await vi.advanceTimersByTimeAsync(100);
 
       const plugin = await pluginPromise;
 
       // Method works before terminate
-      const promise1 = plugin.methods.testMethod({});
-      vi.runAllTimers();
-      await promise1;
+      const testPromise = plugin.methods.testMethod({});
+      await vi.advanceTimersByTimeAsync(10);
+      await testPromise;
       expect(testMethodMock).toHaveBeenCalledTimes(1);
 
       // Terminate
@@ -816,7 +857,6 @@ describe("initPlugin", () => {
         () => {},
       );
       testChannel?.send({});
-      vi.runAllTimers();
 
       expect(testMethodMock).not.toHaveBeenCalled();
 
