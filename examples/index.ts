@@ -129,7 +129,13 @@ async function renderNote(note: Note): Promise<void> {
         },
         hooks: {
           onEdit: async (noteId: string) => {
-            await openEditor(noteId);
+            await openEditor(noteId, true); // Default to splash
+          },
+          onEditWithSplash: async (noteId: string) => {
+            await openEditor(noteId, true);
+          },
+          onEditNoSplash: async (noteId: string) => {
+            await openEditor(noteId, false);
           },
           onDelete: async (noteId: string) => {
             await deleteNote(noteId);
@@ -150,7 +156,7 @@ async function renderNote(note: Note): Promise<void> {
   }
 }
 
-async function openEditor(noteId: string): Promise<void> {
+async function openEditor(noteId: string, useSplash: boolean = true): Promise<void> {
   const note = notes.find(n => n.id === noteId);
   if (!note) return;
 
@@ -159,12 +165,19 @@ async function openEditor(noteId: string): Promise<void> {
       fullscreenPlugin.destroy();
     }
 
+    const settings: { colors: string[]; splashScreenUrl?: string } = {
+      colors: COLORS,
+    };
+
+    // Only add splash screen URL if requested
+    if (useSplash) {
+      settings.splashScreenUrl = '/examples/plugins/editor-splash.html';
+    }
+
     fullscreenPlugin = await initFullscreenPlugin(
       {
         data: note,
-        settings: {
-          colors: COLORS,
-        },
+        settings: settings,
         hooks: {
           onSave: async (updatedNote: Note) => {
             await saveNote(updatedNote);
@@ -198,7 +211,19 @@ async function openEditor(noteId: string): Promise<void> {
       }
     );
 
-    fullscreenPlugin.show();
+    if (useSplash) {
+      // Show splash screen first
+      await fullscreenPlugin.showSplashScreen();
+      fullscreenPlugin.show();
+
+      // Hide splash screen after a delay to show the loading animation
+      setTimeout(() => {
+        fullscreenPlugin?.hideSplashScreen();
+      }, 1500);
+    } else {
+      // Just show the editor directly
+      fullscreenPlugin.show();
+    }
   } catch (error) {
     console.error('Error opening editor:', error);
     alert('Error opening editor: ' + (error as Error).message);
@@ -283,8 +308,8 @@ async function createNewNote(): Promise<void> {
 
   await renderNote(newNote);
 
-  // Open editor immediately for new note
-  setTimeout(() => openEditor(newNote.id), 100);
+  // Open editor immediately for new note (with splash by default)
+  setTimeout(() => openEditor(newNote.id, true), 100);
 }
 
 function clearAllNotes(): void {

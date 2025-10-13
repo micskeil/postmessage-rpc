@@ -12,6 +12,8 @@ interface Note {
 
 interface NoteHooks {
   onEdit: (noteId: string) => Promise<void>;
+  onEditWithSplash: (noteId: string) => Promise<void>;
+  onEditNoSplash: (noteId: string) => Promise<void>;
   onDelete: (noteId: string) => Promise<void>;
 }
 
@@ -34,24 +36,16 @@ function formatDate(timestamp: number): string {
   return date.toLocaleDateString();
 }
 
-function truncateContent(content: string, maxLength = 150): string {
-  if (content.length <= maxLength) return content;
-  return content.substring(0, maxLength) + '...';
-}
-
 function render(): void {
   if (!noteData) return;
 
   document.body.style.backgroundColor = noteData.color || '#FFFFB4';
 
   document.body.innerHTML = `
-    <div class="card" onclick="handleCardClick(event)">
+    <div class="card">
       <div class="card-header">
         <h3 class="card-title">${escapeHtml(noteData.title || 'Untitled')}</h3>
         <div class="card-actions">
-          <button class="action-btn btn-edit" onclick="handleEdit(event)" title="Edit">
-            ✏️
-          </button>
           <button class="action-btn btn-delete" onclick="handleDelete(event)" title="Delete">
             🗑️
           </button>
@@ -59,17 +53,25 @@ function render(): void {
       </div>
 
       <div class="card-content">
-        ${escapeHtml(truncateContent(noteData.content || ''))}
+        ${escapeHtml(noteData.content || 'No content yet...')}
       </div>
 
       <div class="card-footer">
         <div class="timestamp">
-          <div>Created: ${formatDate(noteData.createdAt)}</div>
-          ${noteData.modifiedAt !== noteData.createdAt ?
-            `<div>Modified: ${formatDate(noteData.modifiedAt)}</div>` : ''}
+          ${formatDate(noteData.modifiedAt)}
         </div>
-        <div class="color-indicator" style="background-color: ${noteData.color}"></div>
       </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="edit-btn edit-with-splash" onclick="handleEditWithSplash(event)">
+        <span class="btn-icon">🎬</span>
+        <span class="btn-text">Edit with Splash</span>
+      </button>
+      <button class="edit-btn edit-no-splash" onclick="handleEditNoSplash(event)">
+        <span class="btn-icon">⚡</span>
+        <span class="btn-text">Edit Directly</span>
+      </button>
     </div>
   `;
 }
@@ -81,25 +83,24 @@ function escapeHtml(text: string): string {
 }
 
 interface WindowWithHandlers extends Window {
-  handleCardClick: (event: MouseEvent) => Promise<void>;
-  handleEdit: (event: MouseEvent) => Promise<void>;
+  handleEditWithSplash: (event: MouseEvent) => Promise<void>;
+  handleEditNoSplash: (event: MouseEvent) => Promise<void>;
   handleDelete: (event: MouseEvent) => Promise<void>;
 }
 
-(window as WindowWithHandlers).handleCardClick = async function(event: MouseEvent): Promise<void> {
-  // Only trigger edit if clicking on card body (not buttons)
-  if ((event.target as Element).closest('.action-btn')) return;
+(window as WindowWithHandlers).handleEditWithSplash = async function(event: MouseEvent): Promise<void> {
+  event.stopPropagation();
 
-  if (hooks && hooks.onEdit && noteData) {
-    await hooks.onEdit(noteData.id);
+  if (hooks && hooks.onEditWithSplash && noteData) {
+    await hooks.onEditWithSplash(noteData.id);
   }
 };
 
-(window as WindowWithHandlers).handleEdit = async function(event: MouseEvent): Promise<void> {
+(window as WindowWithHandlers).handleEditNoSplash = async function(event: MouseEvent): Promise<void> {
   event.stopPropagation();
 
-  if (hooks && hooks.onEdit && noteData) {
-    await hooks.onEdit(noteData.id);
+  if (hooks && hooks.onEditNoSplash && noteData) {
+    await hooks.onEditNoSplash(noteData.id);
   }
 };
 
@@ -115,7 +116,7 @@ interface WindowWithHandlers extends Window {
 (async () => {
   try {
     const result = await providePlugin({
-      hooks: ['onEdit', 'onDelete'],
+      hooks: ['onEdit', 'onEditWithSplash', 'onEditNoSplash', 'onDelete'],
       methods: {
         // Method to update note data from parent
         updateNote: async (updatedNote: Note) => {
