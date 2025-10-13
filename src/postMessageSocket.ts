@@ -5,8 +5,8 @@ import type {
   MessageChannel,
   SafeResult,
   SuccessResult,
-} from "./types/index";
-import { ErrorStrings, ResultStrings } from "./types/index";
+} from "./types/index.ts";
+import { ErrorStrings, ResultStrings } from "./types/index.ts";
 
 /**
  * PostMessageSocket provides secure, bidirectional communication between two window instances

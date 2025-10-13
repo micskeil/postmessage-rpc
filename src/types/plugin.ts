@@ -35,8 +35,8 @@ export interface WindowConfig {
   currentWindow: Window;
   /** The plugin's window (usually iframe.contentWindow) */
   targetWindow: Window;
-  /** Optional timeout in milliseconds for plugin initialization (null = no timeout) */
-  timeout?: number | null;
+  /** Optional timeout in milliseconds for plugin initialization */
+  timeout?: number;
   /** Optional container element to remove on timeout */
   container?: HTMLElement;
 }
@@ -93,10 +93,10 @@ export interface FullscreenPluginOptions {
   /** Parent element where the plugin container will be appended (defaults to document.body) */
   parentElem?: HTMLElement;
   /** Optional callback invoked before initializing the plugin iframe */
-  beforeInit?: ((context: {
+  beforeInit?: (context: {
     container: HTMLElement;
     iframe: HTMLIFrameElement;
-  }) => void) | null;
+  }) => void;
   /** Optional timeout in milliseconds for plugin initialization */
   timeout?: number;
 }
@@ -148,10 +148,10 @@ export interface InlinePluginOptions {
   /** Container element where the plugin iframe will be appended */
   container: HTMLElement;
   /** Optional callback invoked before initializing the plugin iframe */
-  beforeInit?: ((context: {
+  beforeInit?: (context: {
     container: HTMLElement;
     iframe: HTMLIFrameElement;
-  }) => void) | null;
+  }) => void;
   /** Optional timeout in milliseconds for plugin initialization */
   timeout?: number;
 }

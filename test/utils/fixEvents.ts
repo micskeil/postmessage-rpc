@@ -5,7 +5,6 @@ export const useFixedMessageEvent = () => {
 
   const messageEventFixFunction = (self: Window, partner: Window) => {
     return (event: MessageEvent) => {
-      console.log("message event received:", event);
       // if the event has no origin or source, it is likely from jsdom
       // if no source exists, replace it with partner
       // Use a default origin for jsdom since partner.origin might also be empty

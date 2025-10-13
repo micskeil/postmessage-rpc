@@ -1,9 +1,10 @@
 import { createInitPlugin } from "./initPlugin";
+
 import type {
   PluginConfig,
   InlinePluginOptions,
   InlinePlugin,
-} from "./types/index";
+} from "./types/index.ts";
 
 /**
  * Initializes an inline plugin within a specified container.
@@ -17,26 +18,33 @@ export default async function initInlinePlugin(
   { data, settings, parentCallbacks = {} }: PluginConfig,
   { src, container, beforeInit, timeout }: InlinePluginOptions,
 ): Promise<InlinePlugin> {
-	const { methods } = await createInitPlugin({
-		data,
-		settings,
-		parentCallbacks,
-	}, {
-		container,
-		src,
-		timeout,
-		beforeInit,
-	});
+  const { methods, terminate } = await createInitPlugin(
+    {
+      data,
+      settings,
+      parentCallbacks,
+    },
+    {
+      container,
+      src,
+      timeout,
+      beforeInit,
+    },
+  );
 
-	function destroy(): void {
-		while (container.firstChild) {
-			container.firstChild.remove();
-		}
-	}
+  function destroy(): void {
+    // Terminate the PostMessageSocket first to clean up event listeners
+    terminate();
 
-	return {
-		_container: container,
-		methods,
-		destroy,
-	};
+    // Then remove all DOM children from the container
+    while (container.firstChild) {
+      container.firstChild.remove();
+    }
+  }
+
+  return {
+    _container: container,
+    methods,
+    destroy,
+  };
 }

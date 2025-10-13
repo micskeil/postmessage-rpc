@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plugin Interface - PostMessage Communication Library</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 3rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      color: #667eea;
+      margin-bottom: 0.5rem;
+    }
+
+    .tagline {
+      font-size: 1.2rem;
+      color: #666;
+      font-weight: 300;
+    }
+
+    .demo-link {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 2rem 0;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .demo-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .demo-link::before {
+      content: "🚀 ";
+    }
+
+    section {
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      color: #667eea;
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+
+    h3 {
+      color: #764ba2;
+      font-size: 1.3rem;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: #555;
+    }
+
+    ul {
+      margin-left: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+      color: #555;
+    }
+
+    code {
+      background: #f5f5f5;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.9em;
+      color: #d63384;
+    }
+
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-bottom: 1rem;
+      border-left: 4px solid #667eea;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: #333;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .feature {
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      border-radius: 8px;
+      transition: transform 0.2s;
+    }
+
+    .feature:hover {
+      transform: translateY(-4px);
+    }
+
+    .feature h3 {
+      margin-top: 0;
+      color: #667eea;
+    }
+
+    footer {
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 2px solid #f0f0f0;
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .npm-badge {
+      display: inline-block;
+      background: #cb3837;
+      color: white;
+      padding: 0.3rem 0.8rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔌 Plugin Interface</h1>
+      <p class="tagline">Secure PostMessage Communication for Window Objects</p>
+      <a href="/examples/" class="demo-link">View Live Demo</a>
+    </header>
+
+    <section>
+      <h2>What is Plugin Interface?</h2>
+      <p>
+        A TypeScript library that creates secure, standardized communication between window objects
+        (parent pages and iframes) using the postMessage API. Built for plugin ecosystems where
+        you need isolated, sandboxed components that communicate safely.
+      </p>
+
+      <div class="features">
+        <div class="feature">
+          <h3>🔒 Secure by Default</h3>
+          <p>Message validation, origin checking, and iframe isolation prevent XSS attacks.</p>
+        </div>
+        <div class="feature">
+          <h3>🎯 Type-Safe</h3>
+          <p>Full TypeScript support with typed message channels and method signatures.</p>
+        </div>
+        <div class="feature">
+          <h3>🔄 Bidirectional</h3>
+          <p>Request-response patterns, fire-and-forget messages, and hook callbacks.</p>
+        </div>
+        <div class="feature">
+          <h3>⚡ Easy to Use</h3>
+          <p>Simple API - initialize parent, provide plugin, start communicating.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Quick Start</h2>
+
+      <h3>Installation</h3>
+      <pre><code>npm install @chamaileon-sdk/plugin-interface</code></pre>
+
+      <h3>Parent Side (Initialize Plugin)</h3>
+      <pre><code>import { initInlinePlugin } from '@chamaileon-sdk/plugin-interface';
+
+const plugin = await initInlinePlugin(
+  {
+    data: { title: 'Hello World' },
+    settings: { theme: 'dark' },
+    hooks: {
+      onSave: async (data) => {
+        console.log('Plugin saved:', data);
+      }
+    }
+  },
+  {
+    src: 'https://your-plugin-url.com',
+    container: document.getElementById('plugin-container'),
+    timeout: 5000
+  }
+);
+
+// Call plugin methods
+const result = await plugin.methods.getData();
+console.log(result);
+
+// Cleanup
+plugin.destroy();</code></pre>
+
+      <h3>Plugin Side (Register with Parent)</h3>
+      <pre><code>import { providePlugin } from '@chamaileon-sdk/plugin-interface';
+
+const { data, settings, hooks } = await providePlugin({
+  hooks: ['onSave', 'onClose'],
+  methods: {
+    getData: async () => {
+      return { status: 'ok', data: myData };
+    },
+    setTheme: async (theme) => {
+      applyTheme(theme);
+      return { success: true };
+    }
+  },
+  validator: ({ data, settings }) => {
+    if (!data.title) throw new Error('Title is required');
+  }
+});
+
+// Use data and settings from parent
+console.log('Initialized with:', data, settings);
+
+// Call parent hooks
+await hooks.onSave({ content: 'Updated content' });</code></pre>
+    </section>
+
+    <section>
+      <h2>Core Concepts</h2>
+
+      <h3>Inline Plugins</h3>
+      <p>
+        Embedded iframes within your page layout. Perfect for cards, widgets, or multiple
+        instances of the same plugin.
+      </p>
+      <pre><code>import { initInlinePlugin } from '@chamaileon-sdk/plugin-interface';
+
+const plugin = await initInlinePlugin(config, options);</code></pre>
+
+      <h3>Fullscreen Plugins</h3>
+      <p>
+        Modal-style overlays that cover the entire viewport. Includes show/hide animations
+        and optional splash screen support.
+      </p>
+      <pre><code>import { initFullscreenPlugin } from '@chamaileon-sdk/plugin-interface';
+
+const plugin = await initFullscreenPlugin(config, options);
+
+plugin.show();  // Animate in
+plugin.hide();  // Animate out</code></pre>
+
+      <h3>Methods & Hooks</h3>
+      <ul>
+        <li><strong>Methods</strong>: Functions exposed by the plugin that the parent can call</li>
+        <li><strong>Hooks</strong>: Callbacks provided by the parent that the plugin can invoke</li>
+        <li>Both support async/await and typed parameters</li>
+        <li>All communication is secure and validated</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Use Cases</h2>
+      <ul>
+        <li>Email editors with preview plugins</li>
+        <li>Content management systems with widget plugins</li>
+        <li>Dashboard applications with chart/analytics plugins</li>
+        <li>Design tools with component library plugins</li>
+        <li>Any scenario requiring sandboxed, communicating components</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Examples</h2>
+      <p>
+        Check out our <a href="/examples/" style="color: #667eea; font-weight: 600;">interactive sticky notes demo</a>
+        to see the library in action. It demonstrates:
+      </p>
+      <ul>
+        <li>Multiple inline plugins on the same page</li>
+        <li>Fullscreen editor with real-time updates</li>
+        <li>localStorage persistence</li>
+        <li>Parent-plugin bidirectional communication</li>
+        <li>CRUD operations through the plugin interface</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>
+        Built with ❤️ by <a href="https://chamaileon.io" target="_blank" style="color: #667eea;">Chamaileon.io</a>
+      </p>
+      <a href="https://www.npmjs.com/package/@chamaileon-sdk/plugin-interface" class="npm-badge" target="_blank">
+        View on NPM
+      </a>
+    </footer>
+  </div>
+</body>
+</html>

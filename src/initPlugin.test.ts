@@ -11,7 +11,7 @@ import {
 import { createInitPlugin } from "./initPlugin";
 import PostMessageSocket from "./postMessageSocket";
 import { useFixedMessageEvent } from "../test/utils/fixEvents";
-import { ResultStrings } from "./types";
+import { ResultStrings } from "./types/index.ts";
 
 // Mock console.error to avoid cluttering test output
 // Temporarily disabled for debugging

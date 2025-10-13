@@ -5,7 +5,7 @@ import type {
   WindowConfig,
   IframeOptions,
   InitializedPlugin,
-} from "./types/index";
+} from "./types/index.ts";
 
 /**
  * Creates an iframe element and initializes a plugin within it.
@@ -176,7 +176,7 @@ export function createInitPlugin(
  */
 export function initPlugin(
   { data, settings, parentCallbacks = {} }: PluginConfig,
-  { currentWindow, targetWindow, timeout = null, container }: WindowConfig,
+  { currentWindow, targetWindow, timeout, container }: WindowConfig,
 ): Promise<InitializedPlugin> {
   const messageSocket = new PostMessageSocket(currentWindow, targetWindow);
 

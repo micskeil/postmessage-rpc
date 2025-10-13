@@ -1,4 +1,4 @@
-import providePlugin from "./providePlugin";
+import { providePlugin } from "./providePlugin.ts";
 import PostMessageSocket from "./postMessageSocket";
 import {
 	describe,
@@ -28,19 +28,18 @@ const createMessageSockets = (window: Window, iframe: Window) => {
 describe("providePlugin", () => {
 	let pluginIframe: HTMLIFrameElement;
 	const body: HTMLElement = document.querySelector("body")!;
+	const { addMessageEventFix, removeMessageEventFix } = useFixedMessageEvent();
 
-	beforeAll(() => {
-		vi.useFakeTimers({
-			// Allow postMessage and other DOM APIs to run normally
-			toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"],
-		});
-	});
+	// Track all created sockets for cleanup
+	const createdSockets = new Set<PostMessageSocket>();
 
-	afterAll(() => {
-		vi.useRealTimers();
-	});
+	beforeAll(() => {});
+
+	afterAll(() => {});
 
 	beforeEach(() => {
+		vi.useFakeTimers();
+
 		pluginIframe = document.createElement("iframe");
 		pluginIframe.src = "";
 		pluginIframe.allowFullscreen = true;
@@ -73,19 +72,44 @@ describe("providePlugin", () => {
 	});
 
 	afterEach(() => {
-		body.removeChild(pluginIframe);
+		// Clear all pending timers BEFORE cleanup
+		vi.clearAllTimers();
+
+		// Clean up all sockets FIRST
+		createdSockets.forEach((socket) => {
+			try {
+				socket.terminate();
+			} catch (e) {
+				// Ignore errors during cleanup
+			}
+		});
+		createdSockets.clear();
+
+		// Remove event fixes BEFORE removing iframe
+		if (pluginIframe.contentWindow) {
+			removeMessageEventFix(pluginIframe.contentWindow);
+		}
+		removeMessageEventFix(window);
+
+		// Now remove iframe from DOM
+		if (pluginIframe.parentNode) {
+			body.removeChild(pluginIframe);
+		}
+
 		vi.clearAllMocks();
+		vi.useRealTimers();
 	});
 
 	it("should send domReady message to parent window", async () => {
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
-		const { addMessageEventFix } = useFixedMessageEvent();
 		addMessageEventFix(parentWindow, pluginWindow);
 		addMessageEventFix(pluginWindow, parentWindow);
 
 		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		createdSockets.add(parentSocket);
+
 		const domReadyCb = vi.fn();
 		parentSocket.createMessageChannel("domReady", domReadyCb);
 
@@ -99,20 +123,15 @@ describe("providePlugin", () => {
 			parentWindow,
 		);
 
-		vi.runAllTimers();
+		await vi.advanceTimersByTimeAsync(10);
 
 		expect(domReadyCb).toHaveBeenCalled();
-
-		// Clean up
-		parentSocket.terminate();
 	});
 
 	it("should register methods as message channels", async () => {
-		console.log("TEST START: register methods");
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
-		const { addMessageEventFix } = useFixedMessageEvent();
 		addMessageEventFix(parentWindow, pluginWindow);
 		addMessageEventFix(pluginWindow, parentWindow);
 
@@ -120,8 +139,11 @@ describe("providePlugin", () => {
 
 		// Create parent socket FIRST to listen for domReady
 		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		createdSockets.add(parentSocket);
+
 		parentSocket.createMessageChannel("domReady", () => {});
 
+		// Create init channel ONCE with callback that returns method list
 		const initChannel = parentSocket.createMessageChannel("init", () => {
 			return ["testMethod"]; // Tell plugin which methods are available
 		});
@@ -138,35 +160,50 @@ describe("providePlugin", () => {
 			parentWindow,
 		);
 
+		// Advance timers to allow plugin to set up channels
+		await vi.advanceTimersByTimeAsync(10);
+
+		// Register parent callback channels FIRST (before sending init)
+		const errorCallback = vi.fn();
+		parentSocket.createMessageChannel("error", errorCallback);
+
 		// Send init message to complete handshake
-		initChannel.sendAndWait({
+		const initPromise = initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			parentCallbacks: { error: vi.fn() },
+			parentCallbacks: ["error"], // Array of callback names!
 		});
 
-		vi.runAllTimers();
-		await pluginPromise;
+		await vi.advanceTimersByTimeAsync(100);
+
+		const methodList = await initPromise;
+		const plugin = await pluginPromise;
 
 		// Now call the method from parent
 		const testChannel = parentSocket.createMessageChannel("testMethod", () => {});
 		const resultPromise = testChannel.sendAndWait("test payload");
-		vi.runAllTimers();
+		await vi.advanceTimersByTimeAsync(10);
 
 		await expect(resultPromise).resolves.toBe("method result");
 		expect(testMethod).toHaveBeenCalledWith("test payload");
-
-		// Clean up
-		parentSocket.terminate();
 	});
 
 	it("should automatically add error hook if not provided", async () => {
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
-		const { addMessageEventFix } = useFixedMessageEvent();
 		addMessageEventFix(parentWindow, pluginWindow);
 		addMessageEventFix(pluginWindow, parentWindow);
+
+		// Send init message from parent
+		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		createdSockets.add(parentSocket);
+
+		parentSocket.createMessageChannel("domReady", () => {});
+
+		const initChannel = parentSocket.createMessageChannel("init", () => {
+			return ["testMethod"];
+		});
 
 		const pluginPromise = providePlugin(
 			{
@@ -177,42 +214,50 @@ describe("providePlugin", () => {
 			parentWindow,
 		);
 
-		vi.runAllTimers();
+		// Advance timers to allow plugin to set up channels
+		await vi.advanceTimersByTimeAsync(10);
 
-		// Send init message from parent
-		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
-		const handshakeCompleteCb = vi.fn();
-		parentSocket.createMessageChannel("handshakeComplete", handshakeCompleteCb);
-		parentSocket.createMessageChannel("domReady", () => {});
-
-		const initChannel = parentSocket.createMessageChannel("init", () => {
-			return ["testMethod"];
-		});
+		// Register parent callbacks
+		const onSaveCallback = vi.fn();
+		const errorCallback = vi.fn();
+		parentSocket.createMessageChannel("onSave", onSaveCallback);
+		parentSocket.createMessageChannel("error", errorCallback);
 
 		const initPromise = initChannel.sendAndWait({
 			data: { test: "data" },
 			settings: { test: "setting" },
-			parentCallbacks: { onSave: vi.fn(), error: vi.fn() },
+			parentCallbacks: ["onSave", "error"], // Array of names!
 		});
 
-		vi.runAllTimers();
+		await vi.advanceTimersByTimeAsync(100);
+
+		await initPromise;
 
 		const plugin = await pluginPromise;
 
 		expect(plugin.parentCallbacks).toHaveProperty("onSave");
 		expect(plugin.parentCallbacks).toHaveProperty("error");
-
-		// Clean up
-		parentSocket.terminate();
 	});
 
 	it("should resolve with data, settings, parentCallbacks, and terminate", async () => {
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
-		const { addMessageEventFix } = useFixedMessageEvent();
 		addMessageEventFix(parentWindow, pluginWindow);
 		addMessageEventFix(pluginWindow, parentWindow);
+
+		// Send init message from parent
+		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		createdSockets.add(parentSocket);
+
+		parentSocket.createMessageChannel("domReady", () => {});
+
+		const onSaveHook = vi.fn();
+		const onCloseHook = vi.fn();
+
+		const initChannel = parentSocket.createMessageChannel("init", () => {
+			return ["testMethod"];
+		});
 
 		const pluginPromise = providePlugin(
 			{
@@ -223,31 +268,23 @@ describe("providePlugin", () => {
 			parentWindow,
 		);
 
-		vi.runAllTimers();
+		// Advance timers to allow plugin to set up channels
+		await vi.advanceTimersByTimeAsync(10);
 
-		// Send init message from parent
-		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
-		parentSocket.createMessageChannel("handshakeComplete", () => {});
-		parentSocket.createMessageChannel("domReady", () => {});
+		// Register parent callbacks
+		parentSocket.createMessageChannel("onSave", onSaveHook);
+		parentSocket.createMessageChannel("onClose", onCloseHook);
+		parentSocket.createMessageChannel("error", vi.fn());
 
-		const onSaveHook = vi.fn();
-		const onCloseHook = vi.fn();
-
-		parentSocket.createMessageChannel("init", () => {
-			return ["testMethod"];
-		});
-
-		const initChannel = parentSocket.createMessageChannel("init", () => {
-			return ["testMethod"];
-		});
-
-		initChannel.sendAndWait({
+		const initPromise = initChannel.sendAndWait({
 			data: { userId: 123 },
 			settings: { theme: "dark" },
-			parentCallbacks: { onSave: onSaveHook, onClose: onCloseHook, error: vi.fn() },
+			parentCallbacks: ["onSave", "onClose", "error"], // Array of names!
 		});
 
-		vi.runAllTimers();
+		await vi.advanceTimersByTimeAsync(100);
+
+		await initPromise;
 
 		const plugin = await pluginPromise;
 
@@ -259,20 +296,26 @@ describe("providePlugin", () => {
 		expect(plugin.data).toEqual({ userId: 123 });
 		expect(plugin.settings).toEqual({ theme: "dark" });
 		expect(typeof plugin.terminate).toBe("function");
-
-		// Clean up
-		parentSocket.terminate();
 	});
 
 	it("should call validator if provided and resolve on success", async () => {
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
-		const { addMessageEventFix } = useFixedMessageEvent();
 		addMessageEventFix(parentWindow, pluginWindow);
 		addMessageEventFix(pluginWindow, parentWindow);
 
 		const validator = vi.fn();
+
+		// Send init message from parent
+		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		createdSockets.add(parentSocket);
+
+		parentSocket.createMessageChannel("domReady", () => {});
+
+		const initChannel = parentSocket.createMessageChannel("init", () => {
+			return [];
+		});
 
 		const pluginPromise = providePlugin(
 			{
@@ -284,28 +327,21 @@ describe("providePlugin", () => {
 			parentWindow,
 		);
 
-		vi.runAllTimers();
+		// Advance timers to allow plugin to set up channels
+		await vi.advanceTimersByTimeAsync(10);
 
-		// Send init message from parent
-		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
-		parentSocket.createMessageChannel("handshakeComplete", () => {});
-		parentSocket.createMessageChannel("domReady", () => {});
+		// Register parent callbacks
+		parentSocket.createMessageChannel("error", vi.fn());
 
-		parentSocket.createMessageChannel("init", () => {
-			return [];
-		});
-
-		const initChannel = parentSocket.createMessageChannel("init", () => {
-			return [];
-		});
-
-		initChannel.sendAndWait({
+		const initPromise = initChannel.sendAndWait({
 			data: { required: "value" },
 			settings: {},
-			parentCallbacks: { error: vi.fn() },
+			parentCallbacks: ["error"], // Array of names!
 		});
 
-		vi.runAllTimers();
+		await vi.advanceTimersByTimeAsync(100);
+
+		await initPromise;
 
 		await pluginPromise;
 
@@ -313,16 +349,12 @@ describe("providePlugin", () => {
 			data: { required: "value" },
 			settings: {},
 		});
-
-		// Clean up
-		parentSocket.terminate();
 	});
 
 	it("should reject if validator throws an error", async () => {
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
-		const { addMessageEventFix } = useFixedMessageEvent();
 		addMessageEventFix(parentWindow, pluginWindow);
 		addMessageEventFix(pluginWindow, parentWindow);
 
@@ -331,6 +363,16 @@ describe("providePlugin", () => {
 			throw validationError;
 		});
 
+		// Send init message from parent
+		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		createdSockets.add(parentSocket);
+
+		parentSocket.createMessageChannel("domReady", () => {});
+
+		const initChannel = parentSocket.createMessageChannel("init", () => {
+			return [];
+		});
+
 		const pluginPromise = providePlugin(
 			{
 				parentCallbacks: [],
@@ -341,49 +383,44 @@ describe("providePlugin", () => {
 			parentWindow,
 		);
 
-		vi.runAllTimers();
+		// Attach a catch handler to prevent unhandled rejection warning
+		// The test will still verify the rejection below
+		pluginPromise.catch(() => {});
 
-		// Send init message from parent
-		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
-		parentSocket.createMessageChannel("handshakeComplete", () => {});
-		parentSocket.createMessageChannel("domReady", () => {});
+		// Advance timers to allow plugin to set up channels
+		await vi.advanceTimersByTimeAsync(10);
 
-		parentSocket.createMessageChannel("init", () => {
-			return [];
-		});
+		// Register parent callbacks
+		parentSocket.createMessageChannel("error", vi.fn());
 
-		const initChannel = parentSocket.createMessageChannel("init", () => {
-			return [];
-		});
-
-		initChannel.sendAndWait({
+		const initPromise = initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			parentCallbacks: { error: vi.fn() },
+			parentCallbacks: ["error"], // Array of names!
 		});
 
-		vi.runAllTimers();
+		await vi.advanceTimersByTimeAsync(100);
+
+		await initPromise;
 
 		await expect(pluginPromise).rejects.toThrow("Missing required data");
 		expect(console.error).toHaveBeenCalledWith(
 			"Plugin validation failed:",
 			validationError,
 		);
-
-		// Clean up
-		parentSocket.terminate();
 	});
 
 	it("should create hook functions that call parent hooks", async () => {
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
-		const { addMessageEventFix } = useFixedMessageEvent();
 		addMessageEventFix(parentWindow, pluginWindow);
 		addMessageEventFix(pluginWindow, parentWindow);
 
 		// Create parent socket FIRST to listen for domReady
 		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		createdSockets.add(parentSocket);
+
 		parentSocket.createMessageChannel("domReady", () => {});
 
 		const onSaveHook = vi.fn().mockReturnValue("saved successfully");
@@ -404,34 +441,48 @@ describe("providePlugin", () => {
 			parentWindow,
 		);
 
+		// Advance timers to allow plugin to set up channels
+		await vi.advanceTimersByTimeAsync(10);
+
+		// Register parent callbacks - Note: error hook already registered above
+		// parentSocket.createMessageChannel("error", vi.fn()); // Already registered
+
 		// Send init message to complete handshake
-		initChannel.sendAndWait({
+		const initPromise = initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			parentCallbacks: { onSave: onSaveHook, error: vi.fn() },
+			parentCallbacks: ["onSave", "error"], // Array of names!
 		});
 
-		vi.runAllTimers();
+		await vi.advanceTimersByTimeAsync(100);
+
+		await initPromise;
 		const plugin = await pluginPromise;
 
 		// Call the hook from plugin side
 		const saveResult = plugin.parentCallbacks.onSave({ content: "test content" });
-		vi.runAllTimers();
+		await vi.advanceTimersByTimeAsync(10);
 
 		await expect(saveResult).resolves.toBe("saved successfully");
 		expect(onSaveHook).toHaveBeenCalledWith({ content: "test content" });
-
-		// Clean up
-		parentSocket.terminate();
 	});
 
 	it("should have a working terminate method", async () => {
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
-		const { addMessageEventFix } = useFixedMessageEvent();
 		addMessageEventFix(parentWindow, pluginWindow);
 		addMessageEventFix(pluginWindow, parentWindow);
+
+		// Send init message from parent
+		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
+		createdSockets.add(parentSocket);
+
+		parentSocket.createMessageChannel("domReady", () => {});
+
+		const initChannel = parentSocket.createMessageChannel("init", () => {
+			return [];
+		});
 
 		const pluginPromise = providePlugin(
 			{
@@ -442,28 +493,21 @@ describe("providePlugin", () => {
 			parentWindow,
 		);
 
-		vi.runAllTimers();
+		// Advance timers to allow plugin to set up channels
+		await vi.advanceTimersByTimeAsync(10);
 
-		// Send init message from parent
-		const parentSocket = new PostMessageSocket(parentWindow, pluginWindow);
-		parentSocket.createMessageChannel("handshakeComplete", () => {});
-		parentSocket.createMessageChannel("domReady", () => {});
+		// Register parent callbacks
+		parentSocket.createMessageChannel("error", vi.fn());
 
-		parentSocket.createMessageChannel("init", () => {
-			return [];
-		});
-
-		const initChannel = parentSocket.createMessageChannel("init", () => {
-			return [];
-		});
-
-		initChannel.sendAndWait({
+		const initPromise = initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			parentCallbacks: { error: vi.fn() },
+			parentCallbacks: ["error"], // Array of names!
 		});
 
-		vi.runAllTimers();
+		await vi.advanceTimersByTimeAsync(100);
+
+		await initPromise;
 
 		const plugin = await pluginPromise;
 
@@ -471,8 +515,5 @@ describe("providePlugin", () => {
 
 		// Terminate should not throw
 		expect(() => plugin.terminate()).not.toThrow();
-
-		// Clean up
-		parentSocket.terminate();
 	});
 });

@@ -10,10 +10,10 @@ import {
   afterAll,
 } from "vitest";
 
-import { ErrorStrings } from "./types";
+import { ErrorStrings } from "./types/index.ts";
 
 import { useFixedMessageEvent } from "../test/utils/fixEvents";
-import { ResultStrings } from "./types";
+import { ResultStrings } from "./types/index.ts";
 
 // Mock console.error to avoid cluttering test output
 console.error = vi.fn();

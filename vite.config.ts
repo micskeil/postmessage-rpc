@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
     publicDir: "public",
     server: {
       port: 8765,
-      open: "/examples/",
+      open: "/",
     },
     resolve: {
       alias: {

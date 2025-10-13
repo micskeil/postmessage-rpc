@@ -1,5 +1,5 @@
 import PostMessageSocket from "./postMessageSocket";
-import type { Method, Methods, ProvidedPlugin } from "./types/index";
+import type { Method, Methods, ProvidedPlugin } from "./types/index.ts";
 
 /**
  * Provides a plugin to the target window using postMessage.
@@ -14,7 +14,7 @@ import type { Method, Methods, ProvidedPlugin } from "./types/index";
  * @returns Promise resolving to plugin interface with data, settings, parentCallbacks, and terminate
  * @see ProvidedPlugin
  */
-export default function providePlugin(
+export function providePlugin(
   options?: {
     parentCallbacks?: string[];
     methods?: Methods;
@@ -37,7 +37,7 @@ export default function providePlugin(
   });
 
   return new Promise((resolve, reject) => {
-    async function onInit(options?: {
+    function onInit(options?: {
       data: unknown;
       settings: unknown;
       parentCallbacks: string[];

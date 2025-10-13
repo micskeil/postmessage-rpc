@@ -1,4 +1,4 @@
-import { MessageChannel } from "./message";
+import { MessageChannel } from "./message.ts";
 
 /**
  * @module Event listener types for message channel callbacks

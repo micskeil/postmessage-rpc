@@ -16,48 +16,128 @@ import { useFixedMessageEvent } from "../test/utils/fixEvents";
 // Not using the real console.error to avoid cluttering the test output
 console.error = vi.fn();
 
-// Mock initUpdateHooks since it's not implemented yet
-(global as any).initUpdateHooks = vi.fn(() => {
-	return vi.fn((payload) => {
-		return payload?.hooks ? Object.keys(payload.hooks) : [];
-	});
-});
-
 describe("initInlinePlugin", () => {
 	let container: HTMLDivElement;
 	const body: HTMLElement = document.querySelector("body")!;
+	const { addMessageEventFix, removeMessageEventFix } = useFixedMessageEvent();
 
-	beforeAll(() => {
-		vi.useFakeTimers();
-	});
+	// Track all created iframes and sockets for cleanup
+	const createdIframes = new Set<HTMLIFrameElement>();
+	const createdSockets = new Set<PostMessageSocket>();
 
-	afterAll(() => {
-		vi.useRealTimers();
-	});
+	/**
+	 * Helper to apply event fixes and postMessage mocks for iframe communication
+	 */
+	function applyEventFixes(iframe: HTMLIFrameElement) {
+		// Apply event fixes in both directions
+		addMessageEventFix(window, iframe.contentWindow as Window);
+		addMessageEventFix(iframe.contentWindow as Window, window);
+	}
+
+	/**
+	 * Helper function to simulate a plugin responding to initialization.
+	 * This sets up the necessary message channels on the plugin side.
+	 * Event fixes should be applied before calling this function.
+	 */
+	function setupPluginResponse(
+		pluginWindow: Window,
+		parentWindow: Window,
+		options: {
+			methods?: string[];
+			methodImplementations?: Record<string, (payload: unknown) => unknown>;
+			onInit?: (payload: unknown) => void;
+		} = {},
+	) {
+		const pluginSocket = new PostMessageSocket(pluginWindow, parentWindow);
+		createdSockets.add(pluginSocket);
+
+		// Set up domReady channel
+		const domReadyChannel = pluginSocket.createMessageChannel(
+			"domReady",
+			() => {},
+		);
+
+		// Set up handshakeComplete listener
+		pluginSocket.createMessageChannel("handshakeComplete", () => {}, {
+			once: true,
+		});
+
+		// Set up init listener
+		pluginSocket.createMessageChannel("init", (payload) => {
+			if (options.onInit) {
+				options.onInit(payload);
+			}
+			return options.methods || [];
+		});
+
+		// Set up method implementations
+		if (options.methodImplementations) {
+			Object.entries(options.methodImplementations).forEach(([name, impl]) => {
+				pluginSocket.createMessageChannel(name, impl);
+			});
+		}
+
+		return {
+			pluginSocket,
+			sendDomReady: () => {
+				domReadyChannel?.send({});
+			},
+		};
+	}
+
+	beforeAll(() => {});
+
+	afterAll(() => {});
 
 	beforeEach(() => {
+		vi.useFakeTimers();
 		container = document.createElement("div");
 		container.id = "inline-plugin-container";
 		body.appendChild(container);
-
-		// Reset the mock before each test
-		(global as any).initUpdateHooks = vi.fn(() => {
-			return vi.fn((payload) => {
-				return payload?.hooks ? Object.keys(payload.hooks) : [];
-			});
-		});
 	});
 
 	afterEach(() => {
+		// Clear all pending timers BEFORE cleanup
+		vi.clearAllTimers();
+
+		// Clean up all sockets FIRST
+		createdSockets.forEach((socket) => {
+			try {
+				socket.terminate();
+			} catch (e) {
+				// Ignore errors during cleanup
+			}
+		});
+		createdSockets.clear();
+
+		// IMPORTANT: Remove event fixes BEFORE removing iframes
+		// This ensures the contentWindow is still accessible
+		createdIframes.forEach((iframe) => {
+			if (iframe.contentWindow) {
+				removeMessageEventFix(iframe.contentWindow);
+			}
+		});
+
+		// Also remove the window fix so next test can add a fresh one
+		removeMessageEventFix(window);
+
+		// Now remove iframes from DOM
+		createdIframes.forEach((iframe) => {
+			if (iframe.parentNode) {
+				iframe.parentNode.removeChild(iframe);
+			}
+		});
+		createdIframes.clear();
+
 		if (body.contains(container)) {
 			body.removeChild(container);
 		}
+
 		vi.clearAllMocks();
+		vi.useRealTimers();
 	});
 
 	it("should create an iframe inside the container", async () => {
-		const { addMessageEventFix } = useFixedMessageEvent();
-
 		const pluginPromise = initInlinePlugin(
 			{
 				data: { test: "data" },
@@ -67,46 +147,36 @@ describe("initInlinePlugin", () => {
 			{
 				src: "https://example.com/plugin.html",
 				container,
-				beforeInit: null,
-				timeout: null,
 			},
 		);
 
-		vi.runAllTimers();
-
-		const iframe = container.querySelector("iframe");
+		const iframe = container.querySelector("iframe") as HTMLIFrameElement;
 		expect(iframe).not.toBeNull();
-		expect(iframe?.src).toBe("https://example.com/plugin.html");
+		expect(iframe.src).toBe("https://example.com/plugin.html");
 
-		// Simulate plugin responding
-		if (iframe?.contentWindow) {
-			addMessageEventFix(window, iframe.contentWindow);
-			addMessageEventFix(iframe.contentWindow, window);
+		createdIframes.add(iframe);
+		applyEventFixes(iframe);
 
-			const pluginSocket = new PostMessageSocket(iframe.contentWindow, window);
-			pluginSocket.createMessageChannel("handshakeComplete", () => {});
-			pluginSocket.createMessageChannel("init", () => ["method1"]);
+		const { sendDomReady } = setupPluginResponse(
+			iframe.contentWindow as Window,
+			window,
+			{ methods: ["method1"] },
+		);
 
-			const domReadyChannel = pluginSocket.createMessageChannel(
-				"domReady",
-				() => {},
-			);
-			domReadyChannel.send({});
+		sendDomReady();
+		await vi.advanceTimersByTimeAsync(100);
 
-			vi.runAllTimers();
+		const plugin = await pluginPromise;
 
-			const plugin = await pluginPromise;
+		expect(plugin).toHaveProperty("methods");
+		expect(plugin).toHaveProperty("destroy");
+		expect(plugin).toHaveProperty("_container");
 
-			expect(plugin).toHaveProperty("methods");
-			expect(plugin).toHaveProperty("destroy");
-			expect(plugin).toHaveProperty("_container");
-
-			pluginSocket.terminate();
-		}
+		plugin.destroy();
 	});
 
 	it("should return methods from the plugin", async () => {
-		const { addMessageEventFix } = useFixedMessageEvent();
+		const testMethodCb = vi.fn().mockReturnValue("test result");
 
 		const pluginPromise = initInlinePlugin(
 			{
@@ -117,52 +187,42 @@ describe("initInlinePlugin", () => {
 			{
 				src: "https://example.com/plugin.html",
 				container,
-				beforeInit: null,
-				timeout: null,
 			},
 		);
 
-		vi.runAllTimers();
+		const iframe = container.querySelector("iframe") as HTMLIFrameElement;
+		createdIframes.add(iframe);
+		applyEventFixes(iframe);
 
-		const iframe = container.querySelector("iframe");
-		if (iframe?.contentWindow) {
-			addMessageEventFix(window, iframe.contentWindow);
-			addMessageEventFix(iframe.contentWindow, window);
+		const { sendDomReady } = setupPluginResponse(
+			iframe.contentWindow as Window,
+			window,
+			{
+				methods: ["testMethod"],
+				methodImplementations: {
+					testMethod: testMethodCb,
+				},
+			},
+		);
 
-			const pluginSocket = new PostMessageSocket(iframe.contentWindow, window);
-			pluginSocket.createMessageChannel("handshakeComplete", () => {});
+		sendDomReady();
+		await vi.advanceTimersByTimeAsync(100);
 
-			const testMethodCb = vi.fn().mockReturnValue("test result");
-			pluginSocket.createMessageChannel("testMethod", testMethodCb);
+		const plugin = await pluginPromise;
 
-			pluginSocket.createMessageChannel("init", () => ["testMethod"]);
+		expect(plugin.methods).toHaveProperty("testMethod");
 
-			const domReadyChannel = pluginSocket.createMessageChannel(
-				"domReady",
-				() => {},
-			);
-			domReadyChannel.send({});
+		const resultPromise = plugin.methods.testMethod("test payload");
+		await vi.advanceTimersByTimeAsync(10);
 
-			vi.runAllTimers();
+		const result = await resultPromise;
+		expect(result).toBe("test result");
+		expect(testMethodCb).toHaveBeenCalledWith("test payload");
 
-			const plugin = await pluginPromise;
-
-			expect(plugin.methods).toHaveProperty("testMethod");
-
-			const resultPromise = plugin.methods.testMethod("test payload");
-			vi.runAllTimers();
-
-			const result = await resultPromise;
-			expect(result).toBe("test result");
-			expect(testMethodCb).toHaveBeenCalledWith("test payload");
-
-			pluginSocket.terminate();
-		}
+		plugin.destroy();
 	});
 
 	it("should provide a destroy method that removes iframe", async () => {
-		const { addMessageEventFix } = useFixedMessageEvent();
-
 		const pluginPromise = initInlinePlugin(
 			{
 				data: {},
@@ -172,49 +232,36 @@ describe("initInlinePlugin", () => {
 			{
 				src: "https://example.com/plugin.html",
 				container,
-				beforeInit: null,
-				timeout: null,
 			},
 		);
 
-		vi.runAllTimers();
+		const iframe = container.querySelector("iframe") as HTMLIFrameElement;
+		createdIframes.add(iframe);
+		applyEventFixes(iframe);
 
-		const iframe = container.querySelector("iframe");
-		if (iframe?.contentWindow) {
-			addMessageEventFix(window, iframe.contentWindow);
-			addMessageEventFix(iframe.contentWindow, window);
+		const { sendDomReady } = setupPluginResponse(
+			iframe.contentWindow as Window,
+			window,
+			{ methods: [] },
+		);
 
-			const pluginSocket = new PostMessageSocket(iframe.contentWindow, window);
-			pluginSocket.createMessageChannel("handshakeComplete", () => {});
-			pluginSocket.createMessageChannel("init", () => []);
+		sendDomReady();
+		await vi.advanceTimersByTimeAsync(100);
 
-			const domReadyChannel = pluginSocket.createMessageChannel(
-				"domReady",
-				() => {},
-			);
-			domReadyChannel.send({});
+		const plugin = await pluginPromise;
 
-			vi.runAllTimers();
+		expect(typeof plugin.destroy).toBe("function");
+		expect(container.children.length).toBeGreaterThan(0);
 
-			const plugin = await pluginPromise;
+		// Call destroy
+		plugin.destroy();
 
-			expect(typeof plugin.destroy).toBe("function");
-			expect(container.children.length).toBeGreaterThan(0);
-
-			// Call destroy
-			plugin.destroy();
-
-			// Container should be empty
-			expect(container.children.length).toBe(0);
-			expect(container.querySelector("iframe")).toBeNull();
-
-			pluginSocket.terminate();
-		}
+		// Container should be empty
+		expect(container.children.length).toBe(0);
+		expect(container.querySelector("iframe")).toBeNull();
 	});
 
 	it("should remove all children from container on destroy", async () => {
-		const { addMessageEventFix } = useFixedMessageEvent();
-
 		const pluginPromise = initInlinePlugin(
 			{
 				data: {},
@@ -224,51 +271,39 @@ describe("initInlinePlugin", () => {
 			{
 				src: "https://example.com/plugin.html",
 				container,
-				beforeInit: null,
-				timeout: null,
 			},
 		);
 
-		vi.runAllTimers();
-
-		const iframe = container.querySelector("iframe");
+		const iframe = container.querySelector("iframe") as HTMLIFrameElement;
 
 		// Add additional children to test thorough cleanup
 		const extraDiv = document.createElement("div");
 		container.appendChild(extraDiv);
 
-		if (iframe?.contentWindow) {
-			addMessageEventFix(window, iframe.contentWindow);
-			addMessageEventFix(iframe.contentWindow, window);
+		createdIframes.add(iframe);
+		applyEventFixes(iframe);
 
-			const pluginSocket = new PostMessageSocket(iframe.contentWindow, window);
-			pluginSocket.createMessageChannel("handshakeComplete", () => {});
-			pluginSocket.createMessageChannel("init", () => []);
+		const { sendDomReady } = setupPluginResponse(
+			iframe.contentWindow as Window,
+			window,
+			{ methods: [] },
+		);
 
-			const domReadyChannel = pluginSocket.createMessageChannel(
-				"domReady",
-				() => {},
-			);
-			domReadyChannel.send({});
+		sendDomReady();
+		await vi.advanceTimersByTimeAsync(100);
 
-			vi.runAllTimers();
+		const plugin = await pluginPromise;
 
-			const plugin = await pluginPromise;
+		expect(container.children.length).toBe(2); // iframe + extraDiv
 
-			expect(container.children.length).toBe(2); // iframe + extraDiv
+		// Call destroy
+		plugin.destroy();
 
-			// Call destroy
-			plugin.destroy();
-
-			// All children should be removed
-			expect(container.children.length).toBe(0);
-
-			pluginSocket.terminate();
-		}
+		// All children should be removed
+		expect(container.children.length).toBe(0);
 	});
 
 	it("should call beforeInit if provided", async () => {
-		const { addMessageEventFix } = useFixedMessageEvent();
 		const beforeInit = vi.fn();
 
 		const pluginPromise = initInlinePlugin(
@@ -281,21 +316,32 @@ describe("initInlinePlugin", () => {
 				src: "https://example.com/plugin.html",
 				container,
 				beforeInit,
-				timeout: null,
 			},
 		);
-
-		vi.runAllTimers();
 
 		expect(beforeInit).toHaveBeenCalled();
 		const callArg = beforeInit.mock.calls[0][0];
 		expect(callArg).toHaveProperty("container");
 		expect(callArg).toHaveProperty("iframe");
+
+		const iframe = container.querySelector("iframe") as HTMLIFrameElement;
+		createdIframes.add(iframe);
+		applyEventFixes(iframe);
+
+		const { sendDomReady } = setupPluginResponse(
+			iframe.contentWindow as Window,
+			window,
+			{ methods: [] },
+		);
+
+		sendDomReady();
+		await vi.advanceTimersByTimeAsync(100);
+
+		const plugin = await pluginPromise;
+		plugin.destroy();
 	});
 
 	it("should expose _container property with the container reference", async () => {
-		const { addMessageEventFix } = useFixedMessageEvent();
-
 		const pluginPromise = initInlinePlugin(
 			{
 				data: {},
@@ -305,36 +351,27 @@ describe("initInlinePlugin", () => {
 			{
 				src: "https://example.com/plugin.html",
 				container,
-				beforeInit: null,
-				timeout: null,
 			},
 		);
 
-		vi.runAllTimers();
+		const iframe = container.querySelector("iframe") as HTMLIFrameElement;
+		createdIframes.add(iframe);
+		applyEventFixes(iframe);
 
-		const iframe = container.querySelector("iframe");
-		if (iframe?.contentWindow) {
-			addMessageEventFix(window, iframe.contentWindow);
-			addMessageEventFix(iframe.contentWindow, window);
+		const { sendDomReady } = setupPluginResponse(
+			iframe.contentWindow as Window,
+			window,
+			{ methods: [] },
+		);
 
-			const pluginSocket = new PostMessageSocket(iframe.contentWindow, window);
-			pluginSocket.createMessageChannel("handshakeComplete", () => {});
-			pluginSocket.createMessageChannel("init", () => []);
+		sendDomReady();
+		await vi.advanceTimersByTimeAsync(100);
 
-			const domReadyChannel = pluginSocket.createMessageChannel(
-				"domReady",
-				() => {},
-			);
-			domReadyChannel.send({});
+		const plugin = await pluginPromise;
 
-			vi.runAllTimers();
+		expect(plugin._container).toBe(container);
 
-			const plugin = await pluginPromise;
-
-			expect(plugin._container).toBe(container);
-
-			pluginSocket.terminate();
-		}
+		plugin.destroy();
 	});
 
 	it("should respect timeout setting", async () => {
@@ -347,10 +384,13 @@ describe("initInlinePlugin", () => {
 			{
 				src: "https://example.com/plugin.html",
 				container,
-				beforeInit: null,
 				timeout: 1000,
 			},
 		);
+
+		const iframe = container.querySelector("iframe") as HTMLIFrameElement;
+		createdIframes.add(iframe);
+		applyEventFixes(iframe);
 
 		// Don't simulate plugin response - let it timeout
 		vi.advanceTimersByTime(1000);
@@ -361,10 +401,10 @@ describe("initInlinePlugin", () => {
 	});
 
 	it("should pass data and settings to plugin", async () => {
-		const { addMessageEventFix } = useFixedMessageEvent();
-
 		const testData = { userId: 123, name: "Test User" };
 		const testSettings = { theme: "dark", lang: "en" };
+
+		const initCb = vi.fn();
 
 		const pluginPromise = initInlinePlugin(
 			{
@@ -375,41 +415,33 @@ describe("initInlinePlugin", () => {
 			{
 				src: "https://example.com/plugin.html",
 				container,
-				beforeInit: null,
-				timeout: null,
 			},
 		);
 
-		vi.runAllTimers();
+		const iframe = container.querySelector("iframe") as HTMLIFrameElement;
+		createdIframes.add(iframe);
+		applyEventFixes(iframe);
 
-		const iframe = container.querySelector("iframe");
-		if (iframe?.contentWindow) {
-			addMessageEventFix(window, iframe.contentWindow);
-			addMessageEventFix(iframe.contentWindow, window);
+		const { sendDomReady } = setupPluginResponse(
+			iframe.contentWindow as Window,
+			window,
+			{
+				methods: [],
+				onInit: initCb,
+			},
+		);
 
-			const pluginSocket = new PostMessageSocket(iframe.contentWindow, window);
-			pluginSocket.createMessageChannel("handshakeComplete", () => {});
+		sendDomReady();
+		await vi.advanceTimersByTimeAsync(100);
 
-			const initCb = vi.fn().mockReturnValue([]);
-			pluginSocket.createMessageChannel("init", initCb);
+		const plugin = await pluginPromise;
 
-			const domReadyChannel = pluginSocket.createMessageChannel(
-				"domReady",
-				() => {},
-			);
-			domReadyChannel.send({});
+		expect(initCb).toHaveBeenCalledWith({
+			data: testData,
+			settings: testSettings,
+			parentCallbacks: [],
+		});
 
-			vi.runAllTimers();
-
-			await pluginPromise;
-
-			expect(initCb).toHaveBeenCalledWith({
-				data: testData,
-				settings: testSettings,
-				parentCallbacks: [],
-			});
-
-			pluginSocket.terminate();
-		}
+		plugin.destroy();
 	});
 });
