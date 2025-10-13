@@ -137,7 +137,16 @@ function getFormData(): Note | null {
   };
 }
 
-(window as any).selectColor = function(color: string): void {
+interface WindowWithEditorHandlers extends Window {
+  selectColor: (color: string) => void;
+  handleSave: () => Promise<void>;
+  handleClose: () => Promise<void>;
+  handleDelete: () => Promise<void>;
+  trackChanges: () => void;
+  updateCharCount: () => void;
+}
+
+(window as WindowWithEditorHandlers).selectColor = function(color: string): void {
   trackChanges();
 
   // Update selected state
@@ -149,7 +158,7 @@ function getFormData(): Note | null {
   });
 };
 
-(window as any).handleSave = async function(): Promise<void> {
+(window as WindowWithEditorHandlers).handleSave = async function(): Promise<void> {
   const updatedNote = getFormData();
 
   if (!updatedNote || !updatedNote.title) {
@@ -162,7 +171,7 @@ function getFormData(): Note | null {
   }
 };
 
-(window as any).handleClose = async function(): Promise<void> {
+(window as WindowWithEditorHandlers).handleClose = async function(): Promise<void> {
   if (hasChanges) {
     const confirmed = confirm('You have unsaved changes. Are you sure you want to close?');
     if (!confirmed) return;
@@ -173,7 +182,7 @@ function getFormData(): Note | null {
   }
 };
 
-(window as any).handleDelete = async function(): Promise<void> {
+(window as WindowWithEditorHandlers).handleDelete = async function(): Promise<void> {
   const confirmed = confirm('Are you sure you want to delete this note? This cannot be undone.');
   if (!confirmed) return;
 
@@ -182,13 +191,13 @@ function getFormData(): Note | null {
   }
 };
 
-(window as any).trackChanges = trackChanges;
-(window as any).updateCharCount = updateCharCount;
+(window as WindowWithEditorHandlers).trackChanges = trackChanges;
+(window as WindowWithEditorHandlers).updateCharCount = updateCharCount;
 
 // Handle Escape key
 document.addEventListener('keydown', (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
-    (window as any).handleClose();
+    (window as WindowWithEditorHandlers).handleClose();
   }
 });
 

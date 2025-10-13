@@ -59,7 +59,7 @@ function updateStats(count: number): void {
 // ==================== NOTE MANAGEMENT ====================
 
 let notes: Note[] = [];
-let notePlugins = new Map<string, InlinePlugin>(); // noteId -> plugin instance
+const notePlugins = new Map<string, InlinePlugin>(); // noteId -> plugin instance
 let fullscreenPlugin: FullscreenPlugin | null = null;
 
 async function initializeBoard(): Promise<void> {
@@ -316,8 +316,13 @@ function clearAllNotes(): void {
 }
 
 // Export functions to global scope for onclick handlers
-(window as any).createNewNote = createNewNote;
-(window as any).clearAllNotes = clearAllNotes;
+interface WindowWithFunctions extends Window {
+  createNewNote: () => Promise<void>;
+  clearAllNotes: () => void;
+}
+
+(window as WindowWithFunctions).createNewNote = createNewNote;
+(window as WindowWithFunctions).clearAllNotes = clearAllNotes;
 
 // ==================== INITIALIZATION ====================
 

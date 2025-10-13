@@ -80,7 +80,13 @@ function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
-(window as any).handleCardClick = async function(event: MouseEvent): Promise<void> {
+interface WindowWithHandlers extends Window {
+  handleCardClick: (event: MouseEvent) => Promise<void>;
+  handleEdit: (event: MouseEvent) => Promise<void>;
+  handleDelete: (event: MouseEvent) => Promise<void>;
+}
+
+(window as WindowWithHandlers).handleCardClick = async function(event: MouseEvent): Promise<void> {
   // Only trigger edit if clicking on card body (not buttons)
   if ((event.target as Element).closest('.action-btn')) return;
 
@@ -89,7 +95,7 @@ function escapeHtml(text: string): string {
   }
 };
 
-(window as any).handleEdit = async function(event: MouseEvent): Promise<void> {
+(window as WindowWithHandlers).handleEdit = async function(event: MouseEvent): Promise<void> {
   event.stopPropagation();
 
   if (hooks && hooks.onEdit && noteData) {
@@ -97,7 +103,7 @@ function escapeHtml(text: string): string {
   }
 };
 
-(window as any).handleDelete = async function(event: MouseEvent): Promise<void> {
+(window as WindowWithHandlers).handleDelete = async function(event: MouseEvent): Promise<void> {
   event.stopPropagation();
 
   if (hooks && hooks.onDelete && noteData) {
@@ -128,7 +134,7 @@ function escapeHtml(text: string): string {
           throw new Error('Note data with id is required');
         }
       },
-    }) as ProvidedPlugin<Note, any, NoteHooks>;
+    }) as ProvidedPlugin<Note, Record<string, unknown>, NoteHooks>;
 
     noteData = result.data;
     hooks = result.parentCallbacks;
