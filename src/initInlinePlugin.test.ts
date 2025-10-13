@@ -142,7 +142,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: { test: "data" },
 				settings: { test: "setting" },
-				parentCallbacks: {},
+				hooks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -182,7 +182,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				parentCallbacks: {},
+				hooks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -227,7 +227,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				parentCallbacks: {},
+				hooks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -266,7 +266,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				parentCallbacks: {},
+				hooks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -310,7 +310,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				parentCallbacks: {},
+				hooks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -346,7 +346,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				parentCallbacks: {},
+				hooks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -379,7 +379,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: {},
 				settings: {},
-				parentCallbacks: {},
+				hooks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -410,7 +410,7 @@ describe("initInlinePlugin", () => {
 			{
 				data: testData,
 				settings: testSettings,
-				parentCallbacks: {},
+				hooks: {},
 			},
 			{
 				src: "https://example.com/plugin.html",
@@ -439,7 +439,7 @@ describe("initInlinePlugin", () => {
 		expect(initCb).toHaveBeenCalledWith({
 			data: testData,
 			settings: testSettings,
-			parentCallbacks: [],
+			hooks: [],
 		});
 
 		plugin.destroy();

@@ -1,18 +1,20 @@
 {
-  "name": "message-interface",
+  "name": "@micskeil/postmessage-rpc",
   "version": "0.1.0",
   "keywords": [
     "postMessage",
-    "interface",
-    "iframe"
+    "rpc",
+    "iframe",
+    "window",
+    "communication"
   ],
-  "homepage": "https://github.com/EDMdesigner/plugin-interface#readme",
+  "homepage": "https://github.com/micskeil/postmessage-rpc#readme",
   "bugs": {
-    "url": "https://github.com/EDMdesigner/plugin-interface/issues"
+    "url": "https://github.com/micskeil/postmessage-rpc/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/EDMdesigner/plugin-interface.git"
+    "url": "git+https://github.com/micskeil/postmessage-rpc.git"
   },
   "license": "MIT",
   "type": "module",

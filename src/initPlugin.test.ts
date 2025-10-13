@@ -140,7 +140,7 @@ describe("initPlugin", () => {
         {
           data: { test: "data" },
           settings: { theme: "dark" },
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,
@@ -193,7 +193,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,
@@ -251,7 +251,7 @@ describe("initPlugin", () => {
           {
             data: {},
             settings: {},
-            parentCallbacks: {},
+            hooks: {},
           },
           {
             container,
@@ -280,7 +280,7 @@ describe("initPlugin", () => {
         {
           data: { userId: 123 },
           settings: { theme: "dark" },
-          parentCallbacks: {
+          hooks: {
             onSave,
             onClose,
           },
@@ -320,7 +320,7 @@ describe("initPlugin", () => {
       expect(onInitMock).toHaveBeenCalledWith({
         data: { userId: 123 },
         settings: { theme: "dark" },
-        parentCallbacks: ["onSave", "onClose"],
+        hooks: ["onSave", "onClose"],
       });
 
       // Verify plugin interface
@@ -355,7 +355,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: { onSave, onClose },
+          hooks: { onSave, onClose },
         },
         {
           container,
@@ -403,7 +403,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,
@@ -445,7 +445,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,
@@ -481,7 +481,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,
@@ -518,7 +518,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,
@@ -558,7 +558,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,
@@ -619,7 +619,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,
@@ -680,7 +680,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,
@@ -745,7 +745,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,
@@ -810,7 +810,7 @@ describe("initPlugin", () => {
         {
           data: {},
           settings: {},
-          parentCallbacks: {},
+          hooks: {},
         },
         {
           container,

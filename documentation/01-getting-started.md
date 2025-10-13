@@ -1,22 +1,22 @@
-# Getting Started with message-interface
+# Getting Started with @micskeil/postmessage-rpc
 
-This guide will help you get up and running with `message-interface` in minutes.
+This guide will help you get up and running with `@micskeil/postmessage-rpc` in minutes.
 
 ## Installation
 
 ### NPM
 ```bash
-npm install message-interface
+npm install @micskeil/postmessage-rpc
 ```
 
 ### Yarn
 ```bash
-yarn add message-interface
+yarn add @micskeil/postmessage-rpc
 ```
 
 ### PNPM
 ```bash
-pnpm add message-interface
+pnpm add @micskeil/postmessage-rpc
 ```
 
 ## Requirements
@@ -27,7 +27,7 @@ pnpm add message-interface
 
 ## Basic Concepts
 
-`message-interface` enables secure communication between two windows using postMessage:
+`@micskeil/postmessage-rpc` enables secure communication between two windows using postMessage:
 
 1. **Parent Window**: The main application that embeds the plugin
 2. **Plugin Window**: The iframe that runs plugin code
@@ -56,7 +56,7 @@ pnpm add message-interface
 <head>
   <title>Simple Plugin</title>
   <script type="module">
-    import { providePlugin } from 'message-interface';
+    import { providePlugin } from '@micskeil/postmessage-rpc';
 
     // Register plugin with parent
     const { data, settings, hooks } = await providePlugin({
@@ -110,7 +110,7 @@ pnpm add message-interface
 <head>
   <title>Parent Application</title>
   <script type="module">
-    import { initFullscreenPlugin } from 'message-interface';
+    import { initFullscreenPlugin } from '@micskeil/postmessage-rpc';
 
     // Initialize fullscreen plugin
     const plugin = await initFullscreenPlugin(
@@ -209,7 +209,7 @@ import {
   providePlugin,
   type PluginInitData,
   type FullscreenPluginInterface
-} from 'message-interface';
+} from '@micskeil/postmessage-rpc';
 
 // Define your data types
 interface MyPluginData {
@@ -263,7 +263,7 @@ await plugin.destroy();
 Creates a fixed overlay that covers the entire viewport:
 
 ```typescript
-import { initFullscreenPlugin } from 'message-interface';
+import { initFullscreenPlugin } from '@micskeil/postmessage-rpc';
 
 const plugin = await initFullscreenPlugin(
   { data, settings, hooks },
@@ -288,7 +288,7 @@ plugin.hideSplashScreen();
 Embeds the plugin inline within a container:
 
 ```typescript
-import { initInlinePlugin } from 'message-interface';
+import { initInlinePlugin } from '@micskeil/postmessage-rpc';
 
 const container = document.getElementById('plugin-container');
 

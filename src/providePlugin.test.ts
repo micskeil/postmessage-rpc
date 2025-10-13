@@ -116,7 +116,7 @@ describe("providePlugin", () => {
 		// Start providePlugin in the plugin window
 		const pluginPromise = providePlugin(
 			{
-				parentCallbacks: [],
+				hooks: [],
 				methods: {},
 			},
 			pluginWindow,
@@ -151,7 +151,7 @@ describe("providePlugin", () => {
 		// Start providePlugin in the plugin window
 		const pluginPromise = providePlugin(
 			{
-				parentCallbacks: [],
+				hooks: [],
 				methods: {
 					testMethod,
 				},
@@ -171,7 +171,7 @@ describe("providePlugin", () => {
 		const initPromise = initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			parentCallbacks: ["error"], // Array of callback names!
+			hooks: ["error"], // Array of callback names!
 		});
 
 		await vi.advanceTimersByTimeAsync(100);
@@ -207,7 +207,7 @@ describe("providePlugin", () => {
 
 		const pluginPromise = providePlugin(
 			{
-				parentCallbacks: ["onSave"],
+				hooks: ["onSave"],
 				methods: {},
 			},
 			pluginWindow,
@@ -226,7 +226,7 @@ describe("providePlugin", () => {
 		const initPromise = initChannel.sendAndWait({
 			data: { test: "data" },
 			settings: { test: "setting" },
-			parentCallbacks: ["onSave", "error"], // Array of names!
+			hooks: ["onSave", "error"], // Array of names!
 		});
 
 		await vi.advanceTimersByTimeAsync(100);
@@ -235,11 +235,11 @@ describe("providePlugin", () => {
 
 		const plugin = await pluginPromise;
 
-		expect(plugin.parentCallbacks).toHaveProperty("onSave");
-		expect(plugin.parentCallbacks).toHaveProperty("error");
+		expect(plugin.hooks).toHaveProperty("onSave");
+		expect(plugin.hooks).toHaveProperty("error");
 	});
 
-	it("should resolve with data, settings, parentCallbacks, and terminate", async () => {
+	it("should resolve with data, settings, hooks, and terminate", async () => {
 		const parentWindow = window;
 		const pluginWindow = pluginIframe.contentWindow as Window;
 
@@ -261,7 +261,7 @@ describe("providePlugin", () => {
 
 		const pluginPromise = providePlugin(
 			{
-				parentCallbacks: ["onSave", "onClose"],
+				hooks: ["onSave", "onClose"],
 				methods: {},
 			},
 			pluginWindow,
@@ -279,7 +279,7 @@ describe("providePlugin", () => {
 		const initPromise = initChannel.sendAndWait({
 			data: { userId: 123 },
 			settings: { theme: "dark" },
-			parentCallbacks: ["onSave", "onClose", "error"], // Array of names!
+			hooks: ["onSave", "onClose", "error"], // Array of names!
 		});
 
 		await vi.advanceTimersByTimeAsync(100);
@@ -290,7 +290,7 @@ describe("providePlugin", () => {
 
 		expect(plugin).toHaveProperty("data");
 		expect(plugin).toHaveProperty("settings");
-		expect(plugin).toHaveProperty("parentCallbacks");
+		expect(plugin).toHaveProperty("hooks");
 		expect(plugin).toHaveProperty("terminate");
 
 		expect(plugin.data).toEqual({ userId: 123 });
@@ -319,7 +319,7 @@ describe("providePlugin", () => {
 
 		const pluginPromise = providePlugin(
 			{
-				parentCallbacks: [],
+				hooks: [],
 				methods: {},
 				validator,
 			},
@@ -336,7 +336,7 @@ describe("providePlugin", () => {
 		const initPromise = initChannel.sendAndWait({
 			data: { required: "value" },
 			settings: {},
-			parentCallbacks: ["error"], // Array of names!
+			hooks: ["error"], // Array of names!
 		});
 
 		await vi.advanceTimersByTimeAsync(100);
@@ -375,7 +375,7 @@ describe("providePlugin", () => {
 
 		const pluginPromise = providePlugin(
 			{
-				parentCallbacks: [],
+				hooks: [],
 				methods: {},
 				validator,
 			},
@@ -396,7 +396,7 @@ describe("providePlugin", () => {
 		const initPromise = initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			parentCallbacks: ["error"], // Array of names!
+			hooks: ["error"], // Array of names!
 		});
 
 		await vi.advanceTimersByTimeAsync(100);
@@ -434,7 +434,7 @@ describe("providePlugin", () => {
 		// Start providePlugin in the plugin window
 		const pluginPromise = providePlugin(
 			{
-				parentCallbacks: ["onSave"],
+				hooks: ["onSave"],
 				methods: {},
 			},
 			pluginWindow,
@@ -451,7 +451,7 @@ describe("providePlugin", () => {
 		const initPromise = initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			parentCallbacks: ["onSave", "error"], // Array of names!
+			hooks: ["onSave", "error"], // Array of names!
 		});
 
 		await vi.advanceTimersByTimeAsync(100);
@@ -460,7 +460,7 @@ describe("providePlugin", () => {
 		const plugin = await pluginPromise;
 
 		// Call the hook from plugin side
-		const saveResult = plugin.parentCallbacks.onSave({ content: "test content" });
+		const saveResult = plugin.hooks.onSave({ content: "test content" });
 		await vi.advanceTimersByTimeAsync(10);
 
 		await expect(saveResult).resolves.toBe("saved successfully");
@@ -486,7 +486,7 @@ describe("providePlugin", () => {
 
 		const pluginPromise = providePlugin(
 			{
-				parentCallbacks: [],
+				hooks: [],
 				methods: {},
 			},
 			pluginWindow,
@@ -502,7 +502,7 @@ describe("providePlugin", () => {
 		const initPromise = initChannel.sendAndWait({
 			data: {},
 			settings: {},
-			parentCallbacks: ["error"], // Array of names!
+			hooks: ["error"], // Array of names!
 		});
 
 		await vi.advanceTimersByTimeAsync(100);

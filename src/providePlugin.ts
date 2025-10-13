@@ -6,17 +6,17 @@ import type { Method, Methods, ProvidedPlugin } from "./types/index.ts";
  * This function is called from within the plugin iframe to register with the parent.
  *
  * @param options - Plugin configuration options
- * @param options.parentCallbacks - Array of parent callback names that this plugin accepts
+ * @param options.hooks - Array of parent callback names that this plugin accepts
  * @param options.methods - Map of method names to implementations
  * @param options.validator - Optional function to validate received data and settings
  * @param currentWindow - The plugin's window (defaults to window)
  * @param targetWindow - The parent window (defaults to window.parent)
- * @returns Promise resolving to plugin interface with data, settings, parentCallbacks, and terminate
+ * @returns Promise resolving to plugin interface with data, settings, hooks, and terminate
  * @see ProvidedPlugin
  */
 export function providePlugin(
   options?: {
-    parentCallbacks?: string[];
+    hooks?: string[];
     methods?: Methods;
     validator?: (args: { data?: unknown; settings?: unknown }) => void;
   },
@@ -24,11 +24,11 @@ export function providePlugin(
   targetWindow: Window = window.parent,
 ): Promise<ProvidedPlugin> {
   // Create a new PostMessageSocket instance for the current window and target window
-  const { parentCallbacks = [], methods = {}, validator } = options || {};
+  const { hooks = [], methods = {}, validator } = options || {};
   const messageSocket = new PostMessageSocket(currentWindow, targetWindow);
 
-  if (!parentCallbacks.includes("error")) {
-    parentCallbacks.push("error");
+  if (!hooks.includes("error")) {
+    hooks.push("error");
   }
 
   // Create a messageChannel for each method to allow communication
@@ -40,13 +40,13 @@ export function providePlugin(
     function onInit(options?: {
       data: unknown;
       settings: unknown;
-      parentCallbacks: string[];
+      hooks: string[];
     }) {
-      const { data, settings, parentCallbacks = [] } = options || {};
+      const { data, settings, hooks = [] } = options || {};
 
       //  Initialize the parent callbacks with the provided functions
       // Parent sends an array of callback names, and we create channels for each
-      const parentCallbackFunctions = parentCallbacks.reduce(
+      const parentCallbackFunctions = hooks.reduce(
         (acc: Record<string, Method>, callbackName: string) => {
           // Create a message channel for this callback name
           // The parent has the actual callback implementation
@@ -73,7 +73,7 @@ export function providePlugin(
         resolve({
           data,
           settings,
-          parentCallbacks: parentCallbackFunctions,
+          hooks: parentCallbackFunctions,
           terminate,
         });
 

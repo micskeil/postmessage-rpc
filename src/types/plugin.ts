@@ -23,8 +23,8 @@ export interface PluginConfig {
   data: unknown;
   /** Plugin settings and configuration */
   settings: unknown;
-  /** Map of callback names to functions that the parent provides to the plugin */
-  parentCallbacks: Record<string, Method>;
+  /** Map of hook names to callback functions that the parent provides to the plugin */
+  hooks: Record<string, Method>;
 }
 
 /**
@@ -76,8 +76,8 @@ export interface ProvidedPlugin {
   data: unknown;
   /** Settings received from the parent */
   settings: unknown;
-  /** Map of callback names to functions that call back to the parent */
-  parentCallbacks: Record<string, Method>;
+  /** Map of hook names to callback functions that call back to the parent */
+  hooks: Record<string, Method>;
   /** Function to terminate the plugin communication and cleanup resources */
   terminate: () => void;
 }
@@ -122,9 +122,9 @@ export interface AnimationOptions {
  */
 export interface FullscreenPlugin {
   /** Internal reference to the container element (for debugging) */
-  _container: HTMLDivElement;
+  container: HTMLDivElement;
   /** Internal reference to the plugin source URL (for debugging) */
-  _src: string;
+  src: string;
   /** Map of method names to async method implementations */
   methods: Record<string, Method>;
   /** Show the splash screen if configured */

@@ -6,7 +6,7 @@ import type {
   SafeResult,
   SuccessResult,
 } from "./types/index.ts";
-import { ErrorStrings, ResultStrings } from "./types/index.ts";
+import { ErrorStrings, ResultStrings } from "./types/index";
 
 /**
  * PostMessageSocket provides secure, bidirectional communication between two window instances
@@ -282,19 +282,19 @@ export default class PostMessageSocket {
    * Handles both regular messages and responses to previous sendAndWait() calls.
    */
   private async onMessage(event: MessageEvent) {
-    // Prevent this event from bubbling to other listeners
-    event.stopImmediatePropagation();
-
     if (this.isTerminated) {
       this.errorCallback(ErrorStrings.SocketIsTerminated);
       return;
     }
-
     // Security validation: Verify message source and origin
+    // Silently ignore messages from other windows (expected when multiple plugins exist)
     if (event.source !== this.targetWindow) {
-      this.errorCallback(ErrorStrings.NoSourceWindow);
+      // Return silently - could be other plugins or unrelated messages
       return;
     }
+
+    // Prevent this event from bubbling to other listeners
+    event.stopImmediatePropagation();
 
     // Validate the origin matches the expected target origin (set at construction)
     if (event.origin !== this.targetOrigin) {

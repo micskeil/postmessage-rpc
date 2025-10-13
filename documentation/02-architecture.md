@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the internal architecture of `message-interface`, including component structure, communication flow, and design decisions.
+This document describes the internal architecture of `@micskeil/postmessage-rpc`, including component structure, communication flow, and design decisions.
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@ This document describes the internal architecture of `message-interface`, includ
 
 ## Overview
 
-`message-interface` is built on three layers:
+`@micskeil/postmessage-rpc` is built on three layers:
 
 ```
 ┌─────────────────────────────────────────────┐

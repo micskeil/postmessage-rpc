@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**plugin-interface** (published as `@chamaileon-sdk/plugin-interface`) is a postMessage-based communication library that creates and maintains secure, standardized communication between window objects (e.g., a web page and an iframe). Built and maintained by Chamaileon.io for their plugin ecosystem (email editor, preview, gallery, etc.).
+**postmessage-rpc** (published as `@micskeil/postmessage-rpc`) is a postMessage-based RPC (Remote Procedure Call) library that creates and maintains secure, standardized communication between window objects (e.g., a web page and an iframe). This is a fork of Chamaileon's original plugin-interface, enhanced with TypeScript-first approach and modern development practices.
 
 **Key Concepts:**
 

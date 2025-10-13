@@ -127,7 +127,7 @@ async function renderNote(note: Note): Promise<void> {
         settings: {
           editable: true,
         },
-        parentCallbacks: {
+        hooks: {
           onEdit: async (noteId: string) => {
             await openEditor(noteId);
           },
@@ -165,7 +165,7 @@ async function openEditor(noteId: string): Promise<void> {
         settings: {
           colors: COLORS,
         },
-        parentCallbacks: {
+        hooks: {
           onSave: async (updatedNote: Note) => {
             await saveNote(updatedNote);
             fullscreenPlugin?.hide();

@@ -10,13 +10,13 @@ let currentZIndex = 0;
 /**
  * Initializes a fullscreen plugin with custom animations and optional splash screen.
  *
- * @param config - Plugin configuration with data, settings, and parentCallbacks
+ * @param config - Plugin configuration with data, settings, and hooks
  * @param options - Fullscreen-specific options
  * @returns Promise resolving to fullscreen plugin interface
  * @see FullscreenPlugin
  */
 export default async function initFullscreenPlugin(
-  { data, settings, parentCallbacks = {} }: PluginConfig,
+  { data, settings, hooks = {} }: PluginConfig,
   { id, src, parentElem, beforeInit, timeout }: FullscreenPluginOptions,
 ): Promise<FullscreenPlugin> {
   let container: HTMLDivElement | null = document.createElement("div");
@@ -152,18 +152,16 @@ export default async function initFullscreenPlugin(
     }
   }
 
-  let _beforeInit = beforeInit;
-
-  if (!_beforeInit || typeof _beforeInit !== "function") {
-    _beforeInit = function ({ iframe }) {
+  if (!beforeInit || typeof beforeInit !== "function") {
+    beforeInit = function ({ iframe }) {
       iframe.style.width = "100%";
       iframe.style.height = "100%";
     };
   }
 
   const { methods } = await createInitPlugin(
-    { data, settings, parentCallbacks },
-    { container: parent, src, beforeInit: _beforeInit, timeout },
+    { data, settings, hooks },
+    { container, src, beforeInit, timeout },
   );
 
   if (!container) {
@@ -171,8 +169,8 @@ export default async function initFullscreenPlugin(
   }
 
   return {
-    _container: container,
-    _src: src,
+    container,
+    src: src,
     methods,
     showSplashScreen,
     hideSplashScreen,

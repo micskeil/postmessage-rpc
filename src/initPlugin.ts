@@ -15,7 +15,7 @@ import type {
  * @param config - Plugin configuration
  * @param config.data - Initial data to pass to the plugin
  * @param config.settings - Plugin-specific settings
- * @param config.parentCallbacks - Callback functions the parent provides to the plugin
+ * @param config.hooks - Callback functions the parent provides to the plugin
  *
  * @param options - Iframe creation options
  * @param options.container - DOM element where the iframe will be appended
@@ -32,7 +32,7 @@ import type {
  *   {
  *     data: { userId: 123 },
  *     settings: { theme: 'dark' },
- *     parentCallbacks: {
+ *     hooks: {
  *       onSave: async (content) => console.log('Saved:', content),
  *       onClose: async () => console.log('Closed')
  *     }
@@ -55,7 +55,7 @@ import type {
  * ```
  */
 export function createInitPlugin(
-  { data, settings, parentCallbacks = {} }: PluginConfig,
+  { data, settings, hooks = {} }: PluginConfig,
   { container, src, beforeInit, timeout }: IframeOptions,
 ): Promise<InitializedPlugin> {
   const pluginIframe = document.createElement("iframe");
@@ -86,7 +86,7 @@ export function createInitPlugin(
   }
 
   return initPlugin(
-    { data, settings, parentCallbacks },
+    { data, settings, hooks },
     {
       currentWindow: window,
       targetWindow: contentWindow,
@@ -128,7 +128,7 @@ export function createInitPlugin(
  * @param config - Plugin initialization configuration
  * @param config.data - Initial data to pass to the plugin
  * @param config.settings - Plugin-specific settings
- * @param config.parentCallbacks - Map of callback names to callback functions
+ * @param config.hooks - Map of callback names to callback functions
  *
  * @param windowConfig - Window communication configuration
  * @param windowConfig.currentWindow - The parent window that will communicate with the plugin
@@ -149,7 +149,7 @@ export function createInitPlugin(
  *   {
  *     data: { userId: 123, document: {...} },
  *     settings: { theme: 'dark', locale: 'en-US' },
- *     parentCallbacks: {
+ *     hooks: {
  *       onSave: async (content) => {
  *         await saveToBackend(content);
  *       },
@@ -175,7 +175,7 @@ export function createInitPlugin(
  * ```
  */
 export function initPlugin(
-  { data, settings, parentCallbacks = {} }: PluginConfig,
+  { data, settings, hooks = {} }: PluginConfig,
   { currentWindow, targetWindow, timeout, container }: WindowConfig,
 ): Promise<InitializedPlugin> {
   const messageSocket = new PostMessageSocket(currentWindow, targetWindow);
@@ -223,7 +223,7 @@ export function initPlugin(
       try {
         // CRITICAL: Register parent callbacks BEFORE sending init
         // This ensures they're ready when plugin tries to call them
-        Object.entries(parentCallbacks).forEach(
+        Object.entries(hooks).forEach(
           ([callbackName, callbackFn]) => {
             messageSocket.createMessageChannel(callbackName, callbackFn);
           },
@@ -231,7 +231,7 @@ export function initPlugin(
 
         // Send init data to plugin and wait for method list response
         const initChannel = messageSocket.createMessageChannel<
-          { data: unknown; settings: unknown; parentCallbacks: string[] },
+          { data: unknown; settings: unknown; hooks: string[] },
           string[]
         >("init", () => [] as string[]);
 
@@ -244,7 +244,7 @@ export function initPlugin(
         const answer = await initChannel.sendAndWait({
           data,
           settings,
-          parentCallbacks: Object.keys(parentCallbacks),
+          hooks: Object.keys(hooks),
         });
 
         // Handle the case where answer is ResultStrings.Success instead of actual data

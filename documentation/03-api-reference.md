@@ -1,6 +1,6 @@
 # API Reference
 
-Complete API documentation for `message-interface`.
+Complete API documentation for `@micskeil/postmessage-rpc`.
 
 ## Table of Contents
 

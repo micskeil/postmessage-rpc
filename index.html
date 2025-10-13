@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plugin Interface - PostMessage Communication Library</title>
+  <title>PostMessage RPC - Secure Window Communication Library</title>
   <style>
     * {
       margin: 0;
@@ -14,8 +14,8 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       line-height: 1.6;
-      color: #333;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #1e293b;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
       min-height: 100vh;
       padding: 2rem;
     }
@@ -24,47 +24,53 @@
       max-width: 900px;
       margin: 0 auto;
       background: white;
-      border-radius: 12px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
       padding: 3rem;
+      border: 1px solid rgba(0, 0, 0, 0.05);
     }
 
     header {
       text-align: center;
       margin-bottom: 3rem;
       padding-bottom: 2rem;
-      border-bottom: 2px solid #f0f0f0;
+      border-bottom: 1px solid #e2e8f0;
     }
 
     h1 {
       font-size: 2.5rem;
-      color: #667eea;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
       margin-bottom: 0.5rem;
+      font-weight: 800;
     }
 
     .tagline {
       font-size: 1.2rem;
-      color: #666;
-      font-weight: 300;
+      color: #64748b;
+      font-weight: 400;
     }
 
     .demo-link {
       display: inline-block;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
       color: white;
       padding: 1rem 2rem;
-      border-radius: 8px;
+      border-radius: 12px;
       text-decoration: none;
       font-size: 1.2rem;
       font-weight: 600;
       margin: 2rem 0;
-      transition: transform 0.2s, box-shadow 0.2s;
-      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
     .demo-link:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+      box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.3), 0 10px 10px -5px rgba(59, 130, 246, 0.1);
+      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
     }
 
     .demo-link::before {
@@ -76,21 +82,23 @@
     }
 
     h2 {
-      color: #667eea;
+      color: #1e293b;
       font-size: 1.8rem;
       margin-bottom: 1rem;
+      font-weight: 700;
     }
 
     h3 {
-      color: #764ba2;
+      color: #475569;
       font-size: 1.3rem;
       margin-top: 1.5rem;
       margin-bottom: 0.5rem;
+      font-weight: 600;
     }
 
     p {
       margin-bottom: 1rem;
-      color: #555;
+      color: #475569;
     }
 
     ul {
@@ -100,31 +108,33 @@
 
     li {
       margin-bottom: 0.5rem;
-      color: #555;
+      color: #475569;
     }
 
     code {
-      background: #f5f5f5;
+      background: #f1f5f9;
       padding: 0.2rem 0.5rem;
-      border-radius: 4px;
+      border-radius: 6px;
       font-family: 'Monaco', 'Courier New', monospace;
       font-size: 0.9em;
-      color: #d63384;
+      color: #8b5cf6;
+      font-weight: 500;
     }
 
     pre {
-      background: #f5f5f5;
-      padding: 1rem;
-      border-radius: 8px;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 1.5rem;
+      border-radius: 12px;
       overflow-x: auto;
       margin-bottom: 1rem;
-      border-left: 4px solid #667eea;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
 
     pre code {
       background: none;
       padding: 0;
-      color: #333;
+      color: #1e293b;
     }
 
     .features {
@@ -136,54 +146,79 @@
 
     .feature {
       padding: 1.5rem;
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      border-radius: 8px;
-      transition: transform 0.2s;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border-radius: 12px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
 
     .feature:hover {
       transform: translateY(-4px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      border-color: #cbd5e1;
     }
 
     .feature h3 {
       margin-top: 0;
-      color: #667eea;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
     }
 
     footer {
       text-align: center;
       padding-top: 2rem;
-      border-top: 2px solid #f0f0f0;
-      color: #888;
+      border-top: 1px solid #e2e8f0;
+      color: #94a3b8;
       font-size: 0.9rem;
+    }
+
+    footer a {
+      transition: color 0.2s;
+    }
+
+    footer a:hover {
+      color: #3b82f6;
     }
 
     .npm-badge {
       display: inline-block;
-      background: #cb3837;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
       color: white;
-      padding: 0.3rem 0.8rem;
-      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
       text-decoration: none;
       font-size: 0.9rem;
       margin-top: 1rem;
+      font-weight: 600;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .npm-badge:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.3);
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
     }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>🔌 Plugin Interface</h1>
-      <p class="tagline">Secure PostMessage Communication for Window Objects</p>
+      <h1>🔌 PostMessage RPC</h1>
+      <p class="tagline">Professional RPC Library for Window-to-Window Communication</p>
       <a href="/examples/" class="demo-link">View Live Demo</a>
     </header>
 
     <section>
-      <h2>What is Plugin Interface?</h2>
+      <h2>What is PostMessage RPC?</h2>
       <p>
-        A TypeScript library that creates secure, standardized communication between window objects
-        (parent pages and iframes) using the postMessage API. Built for plugin ecosystems where
-        you need isolated, sandboxed components that communicate safely.
+        A professional TypeScript library that enables secure Remote Procedure Calls (RPC) between window objects
+        (parent pages and iframes) using the postMessage API. Built for plugin ecosystems and micro-frontend
+        architectures where you need isolated, sandboxed components that communicate safely.
       </p>
 
       <div class="features">
@@ -210,10 +245,10 @@
       <h2>Quick Start</h2>
 
       <h3>Installation</h3>
-      <pre><code>npm install @chamaileon-sdk/plugin-interface</code></pre>
+      <pre><code>npm install @micskeil/postmessage-rpc</code></pre>
 
       <h3>Parent Side (Initialize Plugin)</h3>
-      <pre><code>import { initInlinePlugin } from '@chamaileon-sdk/plugin-interface';
+      <pre><code>import { initInlinePlugin } from '@micskeil/postmessage-rpc';
 
 const plugin = await initInlinePlugin(
   {
@@ -240,7 +275,7 @@ console.log(result);
 plugin.destroy();</code></pre>
 
       <h3>Plugin Side (Register with Parent)</h3>
-      <pre><code>import { providePlugin } from '@chamaileon-sdk/plugin-interface';
+      <pre><code>import { providePlugin } from '@micskeil/postmessage-rpc';
 
 const { data, settings, hooks } = await providePlugin({
   hooks: ['onSave', 'onClose'],
@@ -273,7 +308,7 @@ await hooks.onSave({ content: 'Updated content' });</code></pre>
         Embedded iframes within your page layout. Perfect for cards, widgets, or multiple
         instances of the same plugin.
       </p>
-      <pre><code>import { initInlinePlugin } from '@chamaileon-sdk/plugin-interface';
+      <pre><code>import { initInlinePlugin } from '@micskeil/postmessage-rpc';
 
 const plugin = await initInlinePlugin(config, options);</code></pre>
 
@@ -282,7 +317,7 @@ const plugin = await initInlinePlugin(config, options);</code></pre>
         Modal-style overlays that cover the entire viewport. Includes show/hide animations
         and optional splash screen support.
       </p>
-      <pre><code>import { initFullscreenPlugin } from '@chamaileon-sdk/plugin-interface';
+      <pre><code>import { initFullscreenPlugin } from '@micskeil/postmessage-rpc';
 
 const plugin = await initFullscreenPlugin(config, options);
 
@@ -312,12 +347,12 @@ plugin.hide();  // Animate out</code></pre>
     <section>
       <h2>Examples</h2>
       <p>
-        Check out our <a href="/examples/" style="color: #667eea; font-weight: 600;">interactive sticky notes demo</a>
+        Check out our <a href="/examples/" style="color: #3b82f6; font-weight: 600; text-decoration: none; transition: color 0.2s;">interactive sticky notes demo</a>
         to see the library in action. It demonstrates:
       </p>
       <ul>
         <li>Multiple inline plugins on the same page</li>
-        <li>Fullscreen editor with real-time updates</li>
+        <li>Fullscreen editor plugin with animations</li>
         <li>localStorage persistence</li>
         <li>Parent-plugin bidirectional communication</li>
         <li>CRUD operations through the plugin interface</li>
@@ -326,9 +361,9 @@ plugin.hide();  // Animate out</code></pre>
 
     <footer>
       <p>
-        Built with ❤️ by <a href="https://chamaileon.io" target="_blank" style="color: #667eea;">Chamaileon.io</a>
+        Fork of Chamaileon's original plugin-interface, enhanced and maintained independently
       </p>
-      <a href="https://www.npmjs.com/package/@chamaileon-sdk/plugin-interface" class="npm-badge" target="_blank">
+      <a href="https://www.npmjs.com/package/@micskeil/postmessage-rpc" class="npm-badge" target="_blank">
         View on NPM
       </a>
     </footer>

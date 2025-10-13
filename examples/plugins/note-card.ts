@@ -115,7 +115,7 @@ interface WindowWithHandlers extends Window {
 (async () => {
   try {
     const result = await providePlugin({
-      parentCallbacks: ['onEdit', 'onDelete'],
+      hooks: ['onEdit', 'onDelete'],
       methods: {
         // Method to update note data from parent
         updateNote: async (updatedNote: Note) => {
@@ -137,7 +137,7 @@ interface WindowWithHandlers extends Window {
     }) as ProvidedPlugin<Note, Record<string, unknown>, NoteHooks>;
 
     noteData = result.data;
-    hooks = result.parentCallbacks;
+    hooks = result.hooks;
 
     render();
   } catch (error) {

@@ -1,7 +1,7 @@
 /**
- * @module Type definitions for @chamaileon-sdk/plugin-interface
+ * @module Type definitions for @micskeil/postmessage-rpc
  *
- * This module exports all type definitions used throughout the plugin interface library.
+ * This module exports all type definitions used throughout the postmessage-rpc library.
  * Types are organized into separate files for better maintainability:
  * - result.ts: Result and error types
  * - message.ts: Message and channel types

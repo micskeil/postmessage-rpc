@@ -1,6 +1,6 @@
-# message-interface Documentation
+# PostMessage RPC Documentation
 
-Complete documentation for the `message-interface` library - a TypeScript-based postMessage communication framework for secure window-to-window messaging.
+Complete documentation for the `@micskeil/postmessage-rpc` library - a TypeScript-based postMessage RPC framework for secure window-to-window communication.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ Complete documentation for the `message-interface` library - a TypeScript-based 
 
 ## Overview
 
-`message-interface` is a postMessage-based communication library that creates and maintains secure, standardized communication between window objects (e.g., a web page and an iframe). It provides a typed, promise-based API for bidirectional communication with built-in error handling and lifecycle management.
+`@micskeil/postmessage-rpc` is a postMessage-based RPC library that creates and maintains secure, standardized communication between window objects (e.g., a web page and an iframe). It provides a typed, promise-based API for bidirectional communication with built-in error handling and lifecycle management.
 
 ### Key Features
 
@@ -41,7 +41,7 @@ Complete documentation for the `message-interface` library - a TypeScript-based 
 #### Parent Side
 Initialize a plugin from the parent window:
 ```typescript
-import { initFullscreenPlugin } from 'message-interface';
+import { initFullscreenPlugin } from '@micskeil/postmessage-rpc';
 
 const plugin = await initFullscreenPlugin(
   {
@@ -69,7 +69,7 @@ await plugin.destroy();
 #### Plugin Side
 Register methods and hooks from inside the plugin iframe:
 ```typescript
-import { providePlugin } from 'message-interface';
+import { providePlugin } from '@micskeil/postmessage-rpc';
 
 const { data, settings, hooks } = await providePlugin({
   hooks: ['onSave', 'onClose'],
@@ -104,7 +104,7 @@ await hooks.onSave(editorData);
 3. [Testing Guide](./07-testing-guide.md) - Writing and running tests
 
 ### For Users of Old Package
-1. [Migration Guide](./08-migration-guide.md) - Migrating from `@chamaileon-sdk/plugin-interface`
+1. [Migration Guide](./08-migration-guide.md) - Migrating from original Chamaileon plugin-interface
 
 ## Documentation Files
 
@@ -121,16 +121,16 @@ await hooks.onSave(editorData);
 
 ## Package Information
 
-- **Package Name**: `message-interface`
+- **Package Name**: `@micskeil/postmessage-rpc`
 - **Version**: `0.1.0`
 - **License**: MIT
-- **Repository**: [EDMdesigner/plugin-interface](https://github.com/EDMdesigner/plugin-interface)
-- **Formerly**: `@chamaileon-sdk/plugin-interface`
+- **Repository**: [micskeil/postmessage-rpc](https://github.com/micskeil/postmessage-rpc)
+- **Origin**: Fork of Chamaileon's `@chamaileon-sdk/plugin-interface`
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/EDMdesigner/plugin-interface/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/EDMdesigner/plugin-interface/discussions)
+- **Issues**: [GitHub Issues](https://github.com/micskeil/postmessage-rpc/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/micskeil/postmessage-rpc/discussions)
 
 ## Contributing
 
@@ -142,8 +142,8 @@ See [Development Guide](./06-development-guide.md) for information on:
 
 ## License
 
-MIT © Chamaileon.io
+MIT
 
 ---
 
-**Note**: This documentation is for version 0.1.0. For documentation of the previous `@chamaileon-sdk/plugin-interface` package, see the [v1.x branch](https://github.com/EDMdesigner/plugin-interface/tree/v1.x).
+**Note**: This documentation is for version 0.1.0. This is a fork of Chamaileon's original `@chamaileon-sdk/plugin-interface`.

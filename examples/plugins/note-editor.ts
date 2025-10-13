@@ -205,7 +205,7 @@ document.addEventListener('keydown', (event: KeyboardEvent) => {
 (async () => {
   try {
     const result = await providePlugin({
-      parentCallbacks: ['onSave', 'onClose', 'onDelete'],
+      hooks: ['onSave', 'onClose', 'onDelete'],
       methods: {
         // Method to get current editor state
         getData: async () => {
@@ -229,7 +229,7 @@ document.addEventListener('keydown', (event: KeyboardEvent) => {
 
     noteData = result.data;
     settings = result.settings;
-    hooks = result.parentCallbacks;
+    hooks = result.hooks;
 
     render();
   } catch (error) {
