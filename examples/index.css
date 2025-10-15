@@ -97,16 +97,40 @@ button:active {
   position: relative;
   height: 280px;
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: white;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 3px dashed rgba(139, 92, 246, 0.5);
+  padding: 8px;
+}
+
+.note-container::before {
+  content: '📦 IFRAME PLUGIN';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+  z-index: 10;
+  white-space: nowrap;
 }
 
 .note-container:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 25px -5px rgba(139, 92, 246, 0.3), 0 10px 10px -5px rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.8);
+}
+
+.note-container:hover::before {
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.6);
 }
 
 .note-container iframe {
@@ -114,6 +138,8 @@ button:active {
   height: 100%;
   border: none;
   display: block;
+  border-radius: 8px;
+  background: white;
 }
 
 .empty-state {

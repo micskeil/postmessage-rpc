@@ -83,6 +83,7 @@ function render(): void {
               <div
                 class="color-option ${color === noteData.color ? 'selected' : ''}"
                 style="background-color: ${color}"
+                data-color="${color}"
                 onclick="selectColor('${color}')"
               ></div>
             `).join('')}
@@ -127,7 +128,7 @@ function getFormData(): Note | null {
 
   const title = titleInput?.value || '';
   const content = contentTextarea?.value || '';
-  const color = selectedColor ? selectedColor.style.backgroundColor : noteData.color;
+  const color = selectedColor?.dataset.color || noteData.color;
 
   return {
     ...noteData,
@@ -152,7 +153,7 @@ interface WindowWithEditorHandlers extends Window {
   // Update selected state
   document.querySelectorAll('.color-option').forEach(el => {
     el.classList.remove('selected');
-    if ((el as HTMLElement).style.backgroundColor === color) {
+    if ((el as HTMLElement).dataset.color === color) {
       el.classList.add('selected');
     }
   });

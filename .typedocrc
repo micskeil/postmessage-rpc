@@ -1,0 +1,14 @@
+# Alternative TypeDoc Configuration Format (JavaScript/JSON5)
+# Use this if you need dynamic configuration or comments
+
+module.exports = {
+  // Same options as typedoc.json but with JavaScript syntax
+  // Useful for conditional configuration based on environment
+  entryPoints: process.env.NODE_ENV === 'production' 
+    ? ['src/main.ts', 'src/types/index.ts']
+    : ['src/**/*.ts'],
+  
+  out: process.env.DOCS_DIR || 'docs-api',
+  
+  // All other options from typedoc.json...
+}

@@ -25,3 +25,6 @@ yarn-error.log*
 
 # Project-specific documentation
 !CLAUDE.md
+
+# TypeDoc generated API documentation
+docs-api

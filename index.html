@@ -203,6 +203,65 @@
       box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.3);
       background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
     }
+
+    .docs-section {
+      background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+      border-radius: 12px;
+      padding: 2rem;
+      margin: 2rem 0;
+      border: 2px solid #bae6fd;
+    }
+
+    .docs-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .doc-card {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      border: 1px solid #e2e8f0;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .doc-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2);
+      border-color: #3b82f6;
+    }
+
+    .doc-card h3 {
+      margin-top: 0;
+      color: #3b82f6;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .doc-card p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #64748b;
+    }
+
+    .doc-icon {
+      font-size: 1.5rem;
+    }
+
+    .api-highlight {
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -240,6 +299,35 @@
         </div>
       </div>
     </section>
+
+    <div class="docs-section">
+      <h2>📚 Documentation</h2>
+      <p>
+        Comprehensive documentation to help you get started quickly and master the library.
+      </p>
+
+      <div class="docs-links">
+        <a href="/docs-api/" class="doc-card">
+          <h3><span class="doc-icon">📖</span> <span class="api-highlight">API Reference</span></h3>
+          <p>Auto-generated TypeScript API documentation with types, parameters, and examples.</p>
+        </a>
+
+        <a href="/documentation/" class="doc-card">
+          <h3><span class="doc-icon">📝</span> Guides</h3>
+          <p>In-depth tutorials, architecture guides, and best practices.</p>
+        </a>
+
+        <a href="/examples/" class="doc-card">
+          <h3><span class="doc-icon">🎮</span> Live Examples</h3>
+          <p>Interactive sticky notes demo showing real-world usage patterns.</p>
+        </a>
+
+        <a href="https://github.com/micskeil/postmessage-rpc" class="doc-card" target="_blank">
+          <h3><span class="doc-icon">💻</span> Source Code</h3>
+          <p>View the full source code, report issues, and contribute on GitHub.</p>
+        </a>
+      </div>
+    </div>
 
     <section>
       <h2>Quick Start</h2>

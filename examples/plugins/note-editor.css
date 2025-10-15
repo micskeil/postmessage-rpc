@@ -8,26 +8,58 @@ body {
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
     Cantarell, sans-serif;
-  background: rgba(15, 23, 42, 0.99);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
   height: 100vh;
+  width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+body::before {
+  content: '🖼️ FULLSCREEN IFRAME PLUGIN';
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  padding: 8px 24px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.5);
+  z-index: 1000;
+  white-space: nowrap;
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow: 0 4px 32px rgba(239, 68, 68, 0.8);
+  }
 }
 
 .editor {
   background: white;
-  border-radius: 20px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  width: 100%;
-  max-width: 700px;
-  max-height: 90vh;
+  border-radius: 0;
+  box-shadow: 0 0 100px rgba(0, 0, 0, 0.5);
+  width: 100vw;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 6px solid;
+  border-image: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ef4444 100%) 1;
 }
 
 @keyframes slideIn {
@@ -42,29 +74,33 @@ body {
 }
 
 .editor-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 2rem 3rem;
+  border-bottom: 2px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(to bottom, #ffffff, #f8fafc);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 .editor-title {
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: 700;
-  color: #1e293b;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: 2rem;
   cursor: pointer;
   color: #64748b;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -78,12 +114,12 @@ body {
 }
 
 .editor-body {
-  padding: 1.5rem;
+  padding: 2rem 3rem;
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .form-group {
@@ -95,17 +131,19 @@ body {
 label {
   font-weight: 600;
   color: #475569;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 input[type="text"],
 textarea {
   width: 100%;
-  padding: 0.75rem;
+  padding: 1rem 1.25rem;
   border: 2px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 12px;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 1.1rem;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: #ffffff;
 }
@@ -118,7 +156,7 @@ textarea:focus {
 }
 
 textarea {
-  min-height: 200px;
+  min-height: 400px;
   resize: vertical;
   line-height: 1.5;
 }
@@ -130,14 +168,14 @@ textarea {
 }
 
 .color-option {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
   cursor: pointer;
   border: 3px solid transparent;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .color-option:hover {
@@ -175,12 +213,13 @@ textarea {
 }
 
 .editor-footer {
-  padding: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  padding: 2rem 3rem;
+  border-top: 2px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(to top, #ffffff, #f8fafc);
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.05);
 }
 
 .btn-group {
@@ -189,10 +228,10 @@ textarea {
 }
 
 button {
-  padding: 0.75rem 1.5rem;
+  padding: 1rem 2rem;
   border: none;
-  border-radius: 10px;
-  font-size: 1rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);

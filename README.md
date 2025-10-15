@@ -4,6 +4,13 @@
 
 This is a fork of the original Chamaileon plugin-interface, enhanced and maintained independently with TypeScript-first approach and modern tooling.
 
+## 📚 Documentation
+
+- **[Getting Started](#installation-and-initialization)** - Quick setup and basic usage
+- **[API Documentation](./docs-api/index.html)** - Auto-generated TypeScript API docs
+- **[Full Documentation](./documentation/)** - In-depth guides and examples
+- **[Examples](#examples)** - Live interactive demos
+
 ## Installation and Initialization
 
 ```bash
@@ -224,3 +231,43 @@ A practical example demonstrating a complete plugin-based application with both 
 - **Plugin → Parent callbacks:** `onEdit(noteId)`, `onDelete(noteId)`, `onSave(note)`, `onClose()`
 
 This example demonstrates the clear separation between parent and plugin iframes - each note card runs in isolation, and the fullscreen editor provides a modal editing experience.
+
+## 📖 Documentation
+
+### Auto-Generated API Documentation
+This project uses [TypeDoc](https://typedoc.org/) to automatically generate API documentation from TypeScript source code and JSDoc comments.
+
+**Generate documentation:**
+```bash
+npm run docs
+```
+
+**View locally:**
+```bash
+npm run docs:serve
+```
+
+The generated documentation includes:
+- Complete API reference for all exported functions and types
+- Parameter and return type documentation
+- Usage examples from JSDoc comments
+- Type hierarchy and relationships
+- Source code links
+
+See [TYPEDOC.md](./TYPEDOC.md) for detailed configuration and customization options.
+
+### Manual Documentation
+Comprehensive guides are available in the [`documentation/`](./documentation/) folder:
+- Architecture overview
+- Communication protocol details
+- Best practices and patterns
+- Migration guide
+
+## Contributing
+
+Contributions are welcome! Please read the [Development Guide](./documentation/06-development-guide.md) before submitting PRs.
+
+## License
+
+MIT - See [LICENSE](./LICENSE) file for details.
+
