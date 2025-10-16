@@ -1,0 +1,115 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+
+  // ============================================
+  // Entry Points - What to Document
+  // ============================================
+  "entryPoints": ["src/main.ts", "src/types/index.ts"],
+  "entryPointStrategy": "expand",
+
+  // ============================================
+  // Output Configuration
+  // ============================================
+  "out": "docs-api",
+  "name": "PostMessage RPC API Documentation",
+  "includeVersion": true,
+  "readme": "README.md",
+
+  // ============================================
+  // Exclusion Patterns
+  // ============================================
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/test/**",
+    "**/tests/**",
+    "**/__tests__/**",
+    "**/node_modules/**"
+  ],
+  "excludePrivate": false,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "excludeInternal": false,
+
+  // ============================================
+  // Navigation & Links
+  // ============================================
+  "navigationLinks": {
+    "GitHub": "https://github.com/micskeil/postmessage-rpc",
+    "NPM": "https://www.npmjs.com/package/@micskeil/postmessage-rpc",
+    "Examples": "https://github.com/micskeil/postmessage-rpc/tree/main/examples"
+  },
+  "sidebarLinks": {
+    "Documentation": "https://github.com/micskeil/postmessage-rpc/tree/main/documentation",
+    "Report Issue": "https://github.com/micskeil/postmessage-rpc/issues"
+  },
+
+  // ============================================
+  // Organization & Sorting
+  // ============================================
+  "sort": ["source-order", "required-first", "kind"],
+  "kindSortOrder": [
+    "Function",
+    "Interface",
+    "TypeAlias",
+    "Class",
+    "Enum",
+    "Variable"
+  ],
+  "categorizeByGroup": true,
+  "defaultCategory": "Other",
+  "categoryOrder": ["Functions", "Types", "Interfaces", "Classes", "*"],
+  "groupOrder": ["Functions", "Classes", "Interfaces", "Type Aliases", "*"],
+
+  // ============================================
+  // Search & Visibility
+  // ============================================
+  "searchInComments": true,
+  "searchInDocuments": true,
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+
+  // ============================================
+  // Error Handling
+  // ============================================
+  "skipErrorChecking": true,
+  "validation": {
+    "notExported": false,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "treatWarningsAsErrors": false,
+
+  // ============================================
+  // Documentation Features
+  // ============================================
+  "includeHierarchySummary": true,
+  "preserveLinkText": true,
+  "sourceLinkTemplate": "https://github.com/micskeil/postmessage-rpc/blob/main/{path}#L{line}",
+
+  // ============================================
+  // Plugins (add custom plugins here)
+  // ============================================
+  "plugin": [],
+
+  // ============================================
+  // Comments & Metadata
+  // ============================================
+  "commentStyle": "all",
+  "useTsLinkResolution": true,
+  "excludeTags": ["@internal"],
+  "blockTags": [
+    "@deprecated",
+    "@param",
+    "@returns",
+    "@throws",
+    "@example",
+    "@see",
+    "@since",
+    "@category"
+  ]
+}

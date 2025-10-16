@@ -1,91 +1,98 @@
-import PostMessageSocket from "./postMessageSocket.js";
-import { initUpdateHookList } from "./updateHooks.js";
+import PostMessageSocket from "./postMessageSocket";
+import type { Method, Methods, ProvidedPlugin } from "./types/index";
 
-export default function providePlugin(
-	{ hooks = [], methods = {}, validator = null } = {},
-	currentWindow = window,
-	targetWindow = window.parent,
-) {
-	const messageSocket = new PostMessageSocket(currentWindow, targetWindow);
+/**
+ * Provides a plugin to the target window using postMessage.
+ * This function is called from within the plugin iframe to register with the parent.
+ *
+ * @param options - Plugin configuration options
+ * @param options.hooks - Array of parent callback names that this plugin accepts
+ * @param options.methods - Map of method names to implementations
+ * @param options.validator - Optional function to validate received data and settings
+ * @param currentWindow - The plugin's window (defaults to window)
+ * @param targetWindow - The parent window (defaults to window.parent)
+ * @returns Promise resolving to plugin interface with data, settings, hooks, and terminate
+ * @see ProvidedPlugin
+ */
+export function providePlugin(
+  options?: {
+    hooks?: string[];
+    methods?: Methods;
+    validator?: (args: { data?: unknown; settings?: unknown }) => void;
+  },
+  currentWindow: Window = window,
+  targetWindow: Window = window.parent,
+): Promise<ProvidedPlugin> {
+  // Create a new PostMessageSocket instance for the current window and target window
+  const { hooks = [], methods = {}, validator } = options || {};
+  const messageSocket = new PostMessageSocket(currentWindow, targetWindow);
 
-	const updateHooksList = initUpdateHookList(hooks, messageSocket, validator);
+  if (!hooks.includes("error")) {
+    hooks.push("error");
+  }
 
-	Object.keys(methods).forEach((methodName) => {
-		if (methodName === "updateHooks") {
-			messageSocket.addListener(
-				"updateHooks",
-				async (payload) =>
-					await methods.updateHooks(await updateHooksList(payload)),
-			);
-		} else {
-			messageSocket.addListener(methodName, (payload) =>
-				methods[methodName](payload),
-			);
-		}
-	});
+  // Create a messageChannel for each method to allow communication
+  Object.entries(methods).forEach(([name, cb]) => {
+    messageSocket.createMessageChannel(name, cb);
+  });
 
-	let ack = false;
+  return new Promise((resolve, reject) => {
+    function onInit(options?: {
+      data: unknown;
+      settings: unknown;
+      hooks: string[];
+    }) {
+      const { data, settings, hooks = [] } = options || {};
 
-	async function sendDomReady() {
-		messageSocket.addListener(
-			"ackDomReady",
-			() => {
-				ack = true;
-			},
-			{ once: true },
-		);
+      //  Initialize the parent callbacks with the provided functions
+      // Parent sends an array of callback names, and we create channels for each
+      const parentCallbackFunctions = hooks.reduce(
+        (acc: Record<string, Method>, callbackName: string) => {
+          // Create a message channel for this callback name
+          // The parent has the actual callback implementation
+          const messageChannel = messageSocket.createMessageChannel(
+            callbackName,
+            () => {}, // Dummy callback - not used on plugin side
+          );
+          // Plugin calls sendAndWait to invoke parent's callback
+          acc[callbackName] = messageChannel.sendAndWait;
+          return acc;
+        },
+        {},
+      );
 
-		while (!ack) {
-			await new Promise((resolve) => {
-				messageSocket.sendMessage("domReady", {});
-				setTimeout(() => {
-					resolve();
-				}, 200);
-			});
-		}
-	}
+      try {
+        if (validator) {
+          validator({ data, settings });
+        }
 
-	if (messageSocket.getDocument().readyState === "loading") {
-		messageSocket
-			.getDocument()
-			.addEventListener("DOMContentLoaded", sendDomReady, { once: true });
-	} else {
-		sendDomReady();
-	}
+        const terminate = () => {
+          messageSocket.terminate();
+        };
 
-	return new Promise((resolveProvidePlugin, rejectProvidePlugin) => {
-		messageSocket.addListener("init", onInit, { once: true });
+        resolve({
+          data,
+          settings,
+          hooks: parentCallbackFunctions,
+          terminate,
+        });
 
-		// eslint-disable-next-line no-shadow
-		async function onInit({
-			data = null,
-			settings = null,
-			hooks = [],
-		} = {}) {
-			ack = true;
-			try {
-				if (typeof validator === "function") {
-					await validator({ data, settings });
-				}
-				// We have to wrap the function to resolve since the
-				// private field implementation in ES6 doesn't allow
-				// resolve directly the function. It gives and error.
-				const terminate = () => {
-					messageSocket.terminate();
-				};
-
-				resolveProvidePlugin({
-					data,
-					settings,
-					hooks: await updateHooksList(hooks),
-					terminate,
-				});
-			} catch (error) {
-				rejectProvidePlugin(error);
-				throw new Error(error.message);
-			}
-
-			return Object.keys(methods);
-		}
-	});
+        // IMPORTANT: Return the list of method names to the parent
+        // so it can create wrapper functions for each method
+        return Object.keys(methods);
+      } catch (error: unknown) {
+        console.error("Plugin validation failed:", error);
+        // If the validator throws an error, we reject the promise
+        reject(error);
+        messageSocket.terminate();
+      }
+    }
+    messageSocket.createMessageChannel("init", onInit, { once: true });
+    // Signal to parent that plugin is ready
+    const readyChannel = messageSocket.createMessageChannel(
+      "domReady",
+      () => {},
+    );
+    readyChannel.send({});
+  });
 }

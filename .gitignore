@@ -5,6 +5,9 @@ dist
 dist-ssr
 *.local
 
+# Vite
+.vite
+
 # local env files
 .env.local
 .env.*.local
@@ -22,3 +25,9 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Project-specific documentation
+!CLAUDE.md
+
+# TypeDoc generated API documentation
+docs-api

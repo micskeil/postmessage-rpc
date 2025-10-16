@@ -1,26 +1,50 @@
-import { createInitPlugin } from "./initPlugin.js";
+import { createInitPlugin } from "./initPlugin";
 
-export default async function initInlinePlugin({ data, settings, hooks }, { src, container, beforeInit = null, timeout }) {
-	const { methods } = await createInitPlugin({
-		data,
-		settings,
-		hooks,
-	}, {
-		container,
-		src,
-		timeout,
-		beforeInit,
-	});
+import type {
+  PluginConfig,
+  InlinePluginOptions,
+  InlinePlugin,
+} from "./types/index";
 
-	function destroy() {
-		while (container.firstChild) {
-			container.firstChild.remove();
-		}
-	}
+/**
+ * Initializes an inline plugin within a specified container.
+ *
+ * @param config - Plugin configuration with data, settings, and hooks
+ * @param options - Inline-specific options
+ * @returns Promise resolving to inline plugin interface
+ * @see InlinePlugin
+ */
+export default async function initInlinePlugin(
+  { data, settings, hooks = {} }: PluginConfig,
+  { src, container, beforeInit, timeout }: InlinePluginOptions,
+): Promise<InlinePlugin> {
+  const { methods, terminate } = await createInitPlugin(
+    {
+      data,
+      settings,
+      hooks,
+    },
+    {
+      container,
+      src,
+      timeout,
+      beforeInit,
+    },
+  );
 
-	return {
-		_container: container,
-		methods,
-		destroy,
-	};
+  function destroy(): void {
+    // Terminate the PostMessageSocket first to clean up event listeners
+    terminate();
+
+    // Then remove all DOM children from the container
+    while (container.firstChild) {
+      container.firstChild.remove();
+    }
+  }
+
+  return {
+    _container: container,
+    methods,
+    destroy,
+  };
 }
