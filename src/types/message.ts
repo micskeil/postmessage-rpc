@@ -1,4 +1,4 @@
-import { ResultStrings, SuccessResult } from "./result.ts";
+import { ResultStrings, SuccessResult } from "./result";
 
 /**
  * @module Message types for PostMessageSocket communication

@@ -5,7 +5,7 @@ import type {
   WindowConfig,
   IframeOptions,
   InitializedPlugin,
-} from "./types/index.ts";
+} from "./types/index";
 
 /**
  * Creates an iframe element and initializes a plugin within it.

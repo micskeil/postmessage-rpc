@@ -5,7 +5,7 @@ import type {
   MessageChannel,
   SafeResult,
   SuccessResult,
-} from "./types/index.ts";
+} from "./types/index";
 import { ErrorStrings, ResultStrings } from "./types/index";
 
 /**

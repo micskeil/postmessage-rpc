@@ -5,6 +5,9 @@ dist
 dist-ssr
 *.local
 
+# Vite
+.vite
+
 # local env files
 .env.local
 .env.*.local

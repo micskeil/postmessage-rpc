@@ -3,7 +3,7 @@ import type {
   PluginConfig,
   FullscreenPluginOptions,
   FullscreenPlugin,
-} from "./types/index.ts";
+} from "./types/index";
 
 let currentZIndex = 0;
 

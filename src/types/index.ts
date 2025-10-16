@@ -13,24 +13,24 @@
 export type {
   SafeResult,
   SuccessResult,
-} from "./result.ts";
+} from "./result";
 export {
   ResultStrings,
   ErrorStrings,
-} from "./result.ts";
+} from "./result";
 
 // Message types
 export type {
   EventName,
   Message,
   MessageChannel,
-} from "./message.ts";
+} from "./message";
 
 // Listener types
 export type {
   ListenerOptions,
   CustomEventListener,
-} from "./listener.ts";
+} from "./listener";
 
 // Plugin types
 export type {
@@ -46,4 +46,4 @@ export type {
   FullscreenPlugin,
   InlinePluginOptions,
   InlinePlugin,
-} from "./plugin.ts";
+} from "./plugin";

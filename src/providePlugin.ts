@@ -1,5 +1,5 @@
 import PostMessageSocket from "./postMessageSocket";
-import type { Method, Methods, ProvidedPlugin } from "./types/index.ts";
+import type { Method, Methods, ProvidedPlugin } from "./types/index";
 
 /**
  * Provides a plugin to the target window using postMessage.

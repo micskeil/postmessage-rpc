@@ -4,7 +4,7 @@ import type {
   PluginConfig,
   InlinePluginOptions,
   InlinePlugin,
-} from "./types/index.ts";
+} from "./types/index";
 
 /**
  * Initializes an inline plugin within a specified container.

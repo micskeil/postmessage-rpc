@@ -1,4 +1,4 @@
-import { providePlugin } from "./providePlugin.ts";
+import { providePlugin } from "./providePlugin";
 import PostMessageSocket from "./postMessageSocket";
 import {
 	describe,
