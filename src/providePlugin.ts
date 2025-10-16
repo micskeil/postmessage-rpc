@@ -55,7 +55,9 @@ export function providePlugin(
             () => {}, // Dummy callback - not used on plugin side
           );
           // Plugin calls sendAndWait to invoke parent's callback
-          acc[callbackName] = messageChannel.sendAndWait;
+          if (messageChannel) {
+            acc[callbackName] = messageChannel.sendAndWait;
+          }
           return acc;
         },
         {},
@@ -93,6 +95,8 @@ export function providePlugin(
       "domReady",
       () => {},
     );
-    readyChannel.send({});
+    if (readyChannel) {
+      readyChannel.send({});
+    }
   });
 }
