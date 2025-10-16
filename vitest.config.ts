@@ -17,6 +17,9 @@ export default defineConfig({
       exclude: [
         ...configDefaults.exclude,
         "*.{js,mjs}",
+        "**/dist/**",
+        "**/examples/**",
+        "**/docs-api/**",
         "**/generated/**",
         "**/bin/**",
         "**/interfaces/**",

@@ -444,4 +444,90 @@ describe("initInlinePlugin", () => {
 
 		plugin.destroy();
 	});
+
+	it("should use default empty hooks when hooks is not provided", async () => {
+		const initCb = vi.fn();
+
+		// Omit hooks entirely to test default parameter
+		const pluginPromise = initInlinePlugin(
+			{
+				data: { test: "data" },
+				settings: { test: "setting" },
+				// hooks NOT provided - should use default {}
+			} as any,
+			{
+				src: "https://example.com/plugin.html",
+				container,
+			},
+		);
+
+		const iframe = container.querySelector("iframe") as HTMLIFrameElement;
+		createdIframes.add(iframe);
+		applyEventFixes(iframe);
+
+		const { sendDomReady } = setupPluginResponse(
+			iframe.contentWindow as Window,
+			window,
+			{
+				methods: [],
+				onInit: initCb,
+			},
+		);
+
+		sendDomReady();
+		await vi.advanceTimersByTimeAsync(100);
+
+		const plugin = await pluginPromise;
+
+		// Should receive empty hooks array
+		expect(initCb).toHaveBeenCalledWith({
+			data: { test: "data" },
+			settings: { test: "setting" },
+			hooks: [],
+		});
+
+		plugin.destroy();
+	});
+
+	it("should handle destroy when container is already empty", async () => {
+		const pluginPromise = initInlinePlugin(
+			{
+				data: {},
+				settings: {},
+				hooks: {},
+			},
+			{
+				src: "https://example.com/plugin.html",
+				container,
+			},
+		);
+
+		const iframe = container.querySelector("iframe") as HTMLIFrameElement;
+		createdIframes.add(iframe);
+		applyEventFixes(iframe);
+
+		const { sendDomReady } = setupPluginResponse(
+			iframe.contentWindow as Window,
+			window,
+			{ methods: [] },
+		);
+
+		sendDomReady();
+		await vi.advanceTimersByTimeAsync(100);
+
+		const plugin = await pluginPromise;
+
+		// Manually remove all children first
+		while (container.firstChild) {
+			container.firstChild.remove();
+		}
+
+		expect(container.children.length).toBe(0);
+
+		// Calling destroy on empty container should not throw
+		expect(() => plugin.destroy()).not.toThrow();
+
+		// Container should still be empty
+		expect(container.children.length).toBe(0);
+	});
 });
