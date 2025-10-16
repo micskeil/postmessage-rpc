@@ -1,5 +1,9 @@
 # PostMessage RPC
 
+[![CI](https://github.com/micskeil/postmessage-rpc/actions/workflows/ci.yml/badge.svg)](https://github.com/micskeil/postmessage-rpc/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@micskeil/postmessage-rpc.svg)](https://www.npmjs.com/package/@micskeil/postmessage-rpc)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **A professional postMessage-based RPC library that creates and maintains secure communication between window objects**, like a web page and an iframe inside it.
 
 This is a fork of the original Chamaileon plugin-interface, enhanced and maintained independently with TypeScript-first approach and modern tooling.
@@ -266,6 +270,40 @@ Comprehensive guides are available in the [`documentation/`](./documentation/) f
 ## Contributing
 
 Contributions are welcome! Please read the [Development Guide](./documentation/06-development-guide.md) before submitting PRs.
+
+### Development Workflow
+
+1. Fork and clone the repository
+2. Create a feature branch: `git checkout -b feat/my-feature`
+3. Make your changes and commit with conventional commits
+4. Push to your fork and submit a pull request
+5. CI will automatically run linting, type-checking, tests, and build validation
+
+### CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+**CI (Pull Requests & Master Push)**
+- Linting with ESLint
+- TypeScript type checking
+- Vitest tests with coverage reporting
+- Library build validation
+
+**CD (Version Tags)**
+- Automated npm publishing on version tags (e.g., `v0.1.1`)
+- TypeDoc documentation deployment to GitHub Pages
+- Automated GitHub releases with changelogs
+
+**Publishing a New Version**
+```bash
+# Update version in package.json
+npm version patch  # or minor, or major
+
+# Push with tags
+git push && git push --tags
+
+# CI/CD will automatically publish to npm and deploy docs
+```
 
 ## License
 
