@@ -42,7 +42,29 @@ npm run lint
 
 # Lint and auto-fix
 npm run lint-fix
+
+# Generate landing page from README
+npm run build:landing
+
+# Generate API documentation (also generates landing page)
+npm run docs
+
+# Generate docs and serve locally
+npm run docs:serve
 ```
+
+## Documentation Structure
+
+**Single Source of Truth**: All documentation is auto-generated from TypeDoc (from JSDoc comments in source code) and the main README.md file.
+
+- **README.md**: Main documentation (moderate length, ~176 lines) - the single source
+- **index.html**: Auto-generated landing page from README.md via `scripts/generate-landing.js`
+- **docs-api/**: Auto-generated API documentation from TypeDoc (JSDoc comments in source files)
+
+When updating documentation:
+1. Edit JSDoc comments in source files for API reference improvements
+2. Edit README.md for overview and getting-started content
+3. Run `npm run docs` to regenerate both landing page and API docs
 
 ## Interactive Examples
 

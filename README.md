@@ -6,306 +6,171 @@
 
 **A professional postMessage-based RPC library that creates and maintains secure communication between window objects**, like a web page and an iframe inside it.
 
-This is a fork of the original Chamaileon plugin-interface, enhanced and maintained independently with TypeScript-first approach and modern tooling.
+A fork of Chamaileon's original plugin-interface, enhanced and maintained independently with TypeScript-first approach and modern tooling.
 
-## 📚 Documentation
+## Key Features
 
-- **[Getting Started](#installation-and-initialization)** - Quick setup and basic usage
-- **[API Documentation](./docs-api/index.html)** - Auto-generated TypeScript API docs
-- **[Full Documentation](./documentation/)** - In-depth guides and examples
-- **[Examples](#examples)** - Live interactive demos
+- 🔒 **Secure by Default** - Message validation, origin checking, and iframe isolation prevent XSS attacks
+- 📝 **TypeScript First** - Full type safety with comprehensive type definitions
+- 🔄 **Bidirectional** - Parent ↔ Plugin two-way communication with async/await support
+- ⚡ **Easy to Use** - Simple API: initialize parent, provide plugin, start communicating
+- 🎣 **Hooks System** - Event-driven callbacks from plugin to parent
+- 🎨 **Multiple Modes** - Fullscreen overlay or inline iframe plugins
 
-## Installation and Initialization
+## Installation
 
 ```bash
-npm i @micskeil/postmessage-rpc
+npm install @micskeil/postmessage-rpc
 ```
 
-The package provides three functions: `initFullscreenPlugin`, `initInlinePlugin`, and `providePlugin`.
+## Quick Start
 
-A plugin initialization consists of two parts:
+### Parent Side (Initialize Plugin)
 
-- On the parent side, you call either `initFullscreenPlugin` or `initInlinePlugin`, based on the usage. The function creates an iframe and starts loading the plugin from the provided source URL.
+```typescript
+import { initInlinePlugin } from '@micskeil/postmessage-rpc';
 
-- Inside the plugin iframe, you call the `providePlugin` function on load. This function responds to the parent side initialization and returns the interface.
-
-## Fullscreen plugin
-
-### Initialization
-To initialize a fullscreen plugin, you have to call the `initFullscreenPlugin` function with the following parameters:
-
-```js
-initFullscreenPlugin(
-	{
-		data: unknown,
-		settings: unknown,
-		hooks: Record<string, Function>,
-	},
-	{
-		id: string,
-		src: string,
-		parentElem?: HTMLElement,
-		beforeInit?: Function,
-		timeout?: number,
-	}
+const plugin = await initInlinePlugin(
+  {
+    data: { userId: 123 },
+    settings: { theme: 'dark' },
+    hooks: {
+      onSave: async (data) => {
+        console.log('Saved:', data);
+      }
+    }
+  },
+  {
+    src: 'https://your-plugin-url.com',
+    container: document.getElementById('plugin-container'),
+    timeout: 5000
+  }
 );
-```
-**Parameters in the first object**
 
-The parameters in the first object will be sent to the plugin directly.
+// Call plugin methods
+const result = await plugin.methods.getData();
 
-- **data:** Initial data to pass to your plugin.
-- **settings:** Configuration settings that modify the look and behavior of the plugin.
-- **hooks:** Callback functions that the plugin can invoke to communicate back to the parent (e.g., `onSave`, `onClose`).
-
-**Parameters in the second object**
-
-The `initFullscreenPlugin` function creates an iframe based on the `src` provided and appends it to the `parentElem`. The second parameter object contains information for the library to create the iframe and append it to your application DOM.
-
-- **id:** The unique identifier for the plugin container element.
-- **src:** The iframe source URL as a string.
-- **parentElem:** HTMLElement where the plugin iframe will be inserted. Default is `document.body`.
-- **beforeInit:** Optional function that runs after the iframe is created. The container and iframe can be accessed inside this callback.
-
-	```js
-	beforeInit({ container, iframe }) {
-		// your code here
-	}
-	```
-
-- **timeout:** Number in milliseconds defining how long the init function should wait for a response from providePlugin before timing out.
-
-### Interface
-In the returned object you will get the following properties:
-```js
-{
-	container: HTMLDivElement,
-	src: string,
-	methods: Record<string, Function>,
-	showSplashScreen: Function,
-	hideSplashScreen: Function,
-	show: Function,
-	hide: Function,
-	destroy: Function,
-}
-```
-- **container:** HTML element containing the plugin iframe
-- **src:** The source URL of the plugin iframe
-- **methods:** Object containing all the plugin's declared methods that can be called from the parent
-- **destroy:** Function that removes the plugin iframe and cleans up resources
-#### Splashscreen
-If the `settings` param provided in the initialization object contains a `splashScreenUrl`, the plugin will have a separate iframe appended to the container, which you can show and hide with the provided `showSplashScreen` and `hideSplashScreen` functions.
-#### Show / Hide
-You can show and hide your created plugins with the provided `show` and `hide`. While using these functions, the plugin won`t be destroyed, it will keep its state while hidden.
-
-**Animations**
-
-The `show` can be called with the following parameters:
-
-```js
-show({ x = "-100vw", y = "0px", opacity = 0.5, scale = 1, time = 500 })
-```
-The `show` function provides an easy way to customize your show animation. With the provided parameters, you can set the default hidden state, described by coordinates, opacity, and scale of the plugin, along with the time of the animation. When the function is called, the plugin will move to a fullscreen view from that hidden position. The animation uses the `translate3d` css function. Likewise, the `hide` function moves the plugin back to its set hidden state.
-
-The default hidden state is moved to the left, so the `show` function will move the plugin to view form the left. See the [content editor example](examples/content-editor-example.html) for more configuration.
-
-
-##  Inline plugin
-To initialize an inline plugin, call the `initInlinePlugin` function with the following parameters:
-
-```js
-initInlinePlugin(
-	{
-		data: unknown,
-		settings: unknown,
-		hooks: Record<string, Function>,
-	},
-	{
-		src: string,
-		container: HTMLElement,
-		beforeInit?: Function,
-		timeout?: number,
-	}
-)
+// Cleanup
+plugin.destroy();
 ```
 
-**Parameters in the first object**
+### Plugin Side (Register with Parent)
 
-The parameters in the first object will be sent to the plugin directly.
+```typescript
+import { providePlugin } from '@micskeil/postmessage-rpc';
 
-- **data:** Initial data to pass to your plugin.
-- **settings:** Configuration settings that modify the look and behavior of the plugin.
-- **hooks:** Callback functions that the plugin can invoke to communicate back to the parent.
-
-**Parameters in the second object**
-
-The second object contains information for the library to create the iframe and append it to your application DOM.
-
-- **src:** The iframe source URL as a string.
-- **container:** The HTMLElement where you want the plugin iframe to be appended.
-- **beforeInit:** Optional function that runs after the iframe is created. The container and iframe can be accessed inside this callback.
-
-	```js
-	beforeInit({ container, iframe }) {
-		// your code here
-	}
-	```
-
-- **timeout:** Number in milliseconds defining how long the init function should wait for a response from providePlugin before timing out.
-
-### Interface
-In the returned object you will get the following properties:
-```js
-{
-	_container: HTMLElement,
-	methods: Record<string, Function>,
-	destroy: Function,
-}
-```
-- **_container:** HTML element containing the plugin iframe
-- **methods:** Object containing all the plugin's declared methods that can be called from the parent
-- **destroy:** Function that removes all children from the container and cleans up resources
-
-## providePlugin
-When your plugin is loaded from the provided source URL, your script inside the iframe must call the `providePlugin` function to register with the parent and establish communication.
-
-```js
-providePlugin({
-	hooks: Array<string>,
-	methods: Record<string, Function>,
-	validator?: Function,
+const { data, settings, hooks } = await providePlugin({
+  hooks: ['onSave', 'onClose'],
+  methods: {
+    getData: async () => {
+      return { status: 'ok', data: myData };
+    },
+    setTheme: async (theme) => {
+      applyTheme(theme);
+      return { success: true };
+    }
+  },
+  validator: ({ data, settings }) => {
+    if (!data.userId) throw new Error('User ID is required');
+  }
 });
+
+// Use data and settings from parent
+console.log('Initialized with:', data, settings);
+
+// Call parent hooks
+await hooks.onSave({ content: 'Updated' });
 ```
 
-- **hooks:** Array of hook names that the plugin accepts and can invoke (e.g., `['onSave', 'onClose', 'onError']`). Note: `'error'` hook is automatically added if not present.
-- **methods:** Object containing functions that can be called from the parent to interact with the plugin.
-- **validator:** Optional function that validates the received `data` and `settings`. Throws an error if validation fails.
+## Core Concepts
 
-### Interface
-The providePlugin function returns a promise that resolves to an object containing:
-```js
-{
-	data: unknown,
-	settings: unknown,
-	hooks: Record<string, Function>,
-	terminate: Function,
-}
+### Inline Plugins
+Embedded iframes within your page layout. Perfect for cards, widgets, or multiple instances.
+
+```typescript
+import { initInlinePlugin } from '@micskeil/postmessage-rpc';
+const plugin = await initInlinePlugin(config, options);
 ```
-- **data:** The initial data sent from the parent during initialization
-- **settings:** The configuration settings sent from the parent
-- **hooks:** Object containing the hook functions provided by the parent that match the accepted hook names
-- **terminate:** Function to terminate communication and clean up resources
+
+### Fullscreen Plugins
+Modal-style overlays that cover the entire viewport with show/hide animations and optional splash screens.
+
+```typescript
+import { initFullscreenPlugin } from '@micskeil/postmessage-rpc';
+const plugin = await initFullscreenPlugin(config, options);
+plugin.show();   // Animate in
+plugin.hide();   // Animate out
+```
+
+## Use Cases
+
+- Email editors with preview plugins
+- Content management systems with widget plugins
+- Dashboard applications with chart/analytics plugins
+- Design tools with component library plugins
+- Micro-frontend architecture
+- Any scenario requiring sandboxed, communicating components
+
+## Documentation
+
+- **[📖 API Documentation](https://micskeil.github.io/postmessage-rpc/)** - Auto-generated TypeScript API reference
+- **[🎮 Live Examples](./examples/)** - Interactive sticky notes demo
+- **[💻 GitHub Repository](https://github.com/micskeil/postmessage-rpc)** - View source code and contribute
 
 ## Examples
 
-The repository includes an interactive sticky notes demo demonstrating the plugin interface in action.
+The repository includes an interactive sticky notes demo demonstrating:
 
-### Running the Examples
+- Multiple inline plugins on the same page
+- Fullscreen editor plugin with animations
+- localStorage persistence
+- Parent-plugin bidirectional communication
+- CRUD operations through the plugin interface
 
-You can run the examples using the dev server:
+Run the examples:
+
 ```bash
-$ npm install
-$ npm run examples
-```
-
-Or manually with any static server:
-```bash
-$ npm run dev
+npm install
+npm run examples
 ```
 
 Then open your browser to `http://localhost:8765/examples/`
 
-### Sticky Notes Demo
-
-**Files:** [`examples/index.html`](examples/index.html) + [`examples/plugins/note-card.html`](examples/plugins/note-card.html) + [`examples/plugins/note-editor.html`](examples/plugins/note-editor.html)
-
-A practical example demonstrating a complete plugin-based application with both inline and fullscreen plugins.
-
-**Features:**
-- Multiple inline note card plugins displayed on a board
-- Each note is an isolated iframe communicating via postMessage
-- Fullscreen editor plugin for editing notes
-- localStorage persistence
-- CRUD operations through parent-plugin communication
-- Color-coded notes with timestamps
-- Real-world bidirectional communication patterns
-
-**Communication flow:**
-- **Parent → Plugin methods:** `updateNote(note)`, `getNote()`
-- **Plugin → Parent callbacks:** `onEdit(noteId)`, `onDelete(noteId)`, `onSave(note)`, `onClose()`
-
-This example demonstrates the clear separation between parent and plugin iframes - each note card runs in isolation, and the fullscreen editor provides a modal editing experience.
-
-## 📖 Documentation
-
-### Auto-Generated API Documentation
-This project uses [TypeDoc](https://typedoc.org/) to automatically generate API documentation from TypeScript source code and JSDoc comments.
-
-**Generate documentation:**
-```bash
-npm run docs
-```
-
-**View locally:**
-```bash
-npm run docs:serve
-```
-
-The generated documentation includes:
-- Complete API reference for all exported functions and types
-- Parameter and return type documentation
-- Usage examples from JSDoc comments
-- Type hierarchy and relationships
-- Source code links
-
-See [TYPEDOC.md](./TYPEDOC.md) for detailed configuration and customization options.
-
-### Manual Documentation
-Comprehensive guides are available in the [`documentation/`](./documentation/) folder:
-- Architecture overview
-- Communication protocol details
-- Best practices and patterns
-- Migration guide
-
 ## Contributing
 
-Contributions are welcome! Please read the [Development Guide](./documentation/06-development-guide.md) before submitting PRs.
+Contributions are welcome! Please see [GitHub Issues](https://github.com/micskeil/postmessage-rpc/issues) to report bugs or request features.
 
 ### Development Workflow
 
 1. Fork and clone the repository
 2. Create a feature branch: `git checkout -b feat/my-feature`
-3. Make your changes and commit with conventional commits
-4. Push to your fork and submit a pull request
-5. CI will automatically run linting, type-checking, tests, and build validation
+3. Make your changes and run tests: `npm test`
+4. Lint and build: `npm run lint-fix && npm run build`
+5. Submit a pull request
 
-### CI/CD Pipeline
+### Development Commands
 
-This project uses GitHub Actions for continuous integration and deployment:
-
-**CI (Pull Requests & Master Push)**
-- Linting with ESLint
-- TypeScript type checking
-- Vitest tests with coverage reporting
-- Library build validation
-
-**CD (Version Tags)**
-- Automated npm publishing on version tags (e.g., `v0.1.1`)
-- TypeDoc documentation deployment to GitHub Pages
-- Automated GitHub releases with changelogs
-
-**Publishing a New Version**
 ```bash
-# Update version in package.json
-npm version patch  # or minor, or major
-
-# Push with tags
-git push && git push --tags
-
-# CI/CD will automatically publish to npm and deploy docs
+npm run dev           # Development server with hot reload
+npm run build         # Build the library
+npm run test          # Run tests with coverage
+npm run test:watch    # Watch mode
+npm run lint-fix      # Lint and auto-fix
 ```
+
+## CI/CD Pipeline
+
+GitHub Actions automatically:
+
+- Runs linting, type-checking, and tests on pull requests
+- Publishes to npm on version tags
+- Deploys API documentation to GitHub Pages
+- Creates GitHub releases with changelogs
 
 ## License
 
 MIT - See [LICENSE](./LICENSE) file for details.
 
+---
+
+**Fork of Chamaileon's original plugin-interface** | [View on NPM](https://www.npmjs.com/package/@micskeil/postmessage-rpc)

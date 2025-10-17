@@ -170,7 +170,7 @@ describe("initInlinePlugin", () => {
 
 		expect(plugin).toHaveProperty("methods");
 		expect(plugin).toHaveProperty("destroy");
-		expect(plugin).toHaveProperty("_container");
+		expect(plugin).toHaveProperty("container");
 
 		plugin.destroy();
 	});
@@ -341,7 +341,7 @@ describe("initInlinePlugin", () => {
 		plugin.destroy();
 	});
 
-	it("should expose _container property with the container reference", async () => {
+	it("should expose container property with the container reference", async () => {
 		const pluginPromise = initInlinePlugin(
 			{
 				data: {},
@@ -369,7 +369,7 @@ describe("initInlinePlugin", () => {
 
 		const plugin = await pluginPromise;
 
-		expect(plugin._container).toBe(container);
+		expect(plugin.container).toBe(container);
 
 		plugin.destroy();
 	});
