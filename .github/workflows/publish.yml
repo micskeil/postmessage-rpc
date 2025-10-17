@@ -16,8 +16,46 @@ on:
         default: 'false'
 
 jobs:
+  check-version:
+    name: Check version bump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current and previous versions
+        id: versions
+        run: |
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          # Get previous version from last tag
+          PREVIOUS_TAG=$(git tag --sort=-creatordate | head -1)
+          if [ -z "$PREVIOUS_TAG" ]; then
+            PREVIOUS_VERSION="0.0.0"
+          else
+            PREVIOUS_VERSION=${PREVIOUS_TAG#v}
+          fi
+          echo "previous=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Validate version bump
+        run: |
+          CURRENT="${{ steps.versions.outputs.current }}"
+          PREVIOUS="${{ steps.versions.outputs.previous }}"
+
+          if [ "$CURRENT" = "$PREVIOUS" ]; then
+            echo "❌ Error: Version not bumped! Current: $CURRENT, Previous: $PREVIOUS"
+            echo "Please update package.json version before merging."
+            exit 1
+          fi
+
+          echo "✅ Version check passed: $PREVIOUS → $CURRENT"
+
   validate:
     name: Validate before publish
+    needs: check-version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
