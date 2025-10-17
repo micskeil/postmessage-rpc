@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sticky Notes Board - PostMessage RPC Demo</title>
+  <link rel="stylesheet" href="./index.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="/" class="back-link">← Back to Main Page</a>
+      <h1>📋 Sticky Notes Board</h1>
+      <p class="subtitle">Live demo of PostMessage RPC with inline & fullscreen plugins</p>
+    </header>
+
+    <div class="controls">
+      <button class="btn-primary" onclick="createNewNote()">+ New Note</button>
+      <button class="btn-danger" onclick="clearAllNotes()">Clear All</button>
+    </div>
+
+    <div class="board" id="board">
+      <div class="loading">Loading notes...</div>
+    </div>
+
+    <div class="stats" id="stats">0 notes</div>
+  </div>
+
+  <script type="module" src="./index.ts"></script>
+</body>
+</html>
