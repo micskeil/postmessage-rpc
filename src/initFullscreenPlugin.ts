@@ -170,7 +170,7 @@ export default async function initFullscreenPlugin(
 
   return {
     container,
-    src: src,
+    src,
     methods,
     showSplashScreen,
     hideSplashScreen,

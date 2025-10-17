@@ -121,10 +121,8 @@ export interface AnimationOptions {
  * The interface returned by initFullscreenPlugin
  */
 export interface FullscreenPlugin {
-  /** Internal reference to the container element (for debugging) */
-  container: HTMLDivElement;
-  /** Internal reference to the plugin source URL (for debugging) */
-  src: string;
+  readonly container: HTMLDivElement;
+  readonly src: string;
   /** Map of method names to async method implementations */
   methods: Record<string, Method>;
   /** Show the splash screen if configured */
@@ -160,8 +158,7 @@ export interface InlinePluginOptions {
  * The interface returned by initInlinePlugin
  */
 export interface InlinePlugin {
-  /** Internal reference to the container element (for debugging) */
-  _container: HTMLElement;
+  readonly container: HTMLElement;
   /** Map of method names to async method implementations */
   methods: Record<string, Method>;
   /** Remove all children from the container */

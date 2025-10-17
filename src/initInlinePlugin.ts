@@ -43,7 +43,7 @@ export default async function initInlinePlugin(
   }
 
   return {
-    _container: container,
+    container,
     methods,
     destroy,
   };
