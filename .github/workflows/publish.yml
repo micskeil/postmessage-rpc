@@ -103,6 +103,7 @@ jobs:
           mkdir -p deploy-docs
           cp index.html deploy-docs/index.html
           cp -r docs-api/* deploy-docs/
+          touch deploy-docs/.nojekyll
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
