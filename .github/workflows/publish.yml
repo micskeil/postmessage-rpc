@@ -184,7 +184,7 @@ jobs:
       - name: Check if tag exists
         id: tag_check
         run: |
-          if git rev-parse "${{ steps.get_version.outputs.TAG_NAME }}" >/dev/null 2>&1; then
+          if git ls-remote --tags origin "${{ steps.get_version.outputs.TAG_NAME }}" | grep -q "refs/tags/${{ steps.get_version.outputs.TAG_NAME }}$"; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
