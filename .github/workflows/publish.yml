@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - master
+    paths:
+      - 'package.json'
   workflow_dispatch:
     inputs:
       dry-run:
@@ -126,9 +130,35 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get version from tag
+      - name: Get version
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION=$(jq -r '.version' package.json)
+            TAG_NAME="v${VERSION}"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Check if tag exists
+        id: tag_check
+        run: |
+          if git rev-parse "${{ steps.get_version.outputs.TAG_NAME }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create git tag (if not from tag push)
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag ${{ steps.get_version.outputs.TAG_NAME }}
+          git push origin ${{ steps.get_version.outputs.TAG_NAME }}
 
       - name: Generate changelog
         id: changelog
@@ -147,7 +177,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ steps.get_version.outputs.TAG_NAME }}
           release_name: Release v${{ steps.get_version.outputs.VERSION }}
           body: |
             ## Changes in v${{ steps.get_version.outputs.VERSION }}
