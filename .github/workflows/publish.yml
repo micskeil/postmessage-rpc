@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - master
+    paths:
+      - 'package.json'
   workflow_dispatch:
     inputs:
       dry-run:
@@ -12,8 +16,46 @@ on:
         default: 'false'
 
 jobs:
+  check-version:
+    name: Check version bump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current and previous versions
+        id: versions
+        run: |
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          # Get previous version from last tag
+          PREVIOUS_TAG=$(git tag --sort=-creatordate | head -1)
+          if [ -z "$PREVIOUS_TAG" ]; then
+            PREVIOUS_VERSION="0.0.0"
+          else
+            PREVIOUS_VERSION=${PREVIOUS_TAG#v}
+          fi
+          echo "previous=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Validate version bump
+        run: |
+          CURRENT="${{ steps.versions.outputs.current }}"
+          PREVIOUS="${{ steps.versions.outputs.previous }}"
+
+          if [ "$CURRENT" = "$PREVIOUS" ]; then
+            echo "❌ Error: Version not bumped! Current: $CURRENT, Previous: $PREVIOUS"
+            echo "Please update package.json version before merging."
+            exit 1
+          fi
+
+          echo "✅ Version check passed: $PREVIOUS → $CURRENT"
+
   validate:
     name: Validate before publish
+    needs: check-version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -126,9 +168,35 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get version from tag
+      - name: Get version
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION=$(jq -r '.version' package.json)
+            TAG_NAME="v${VERSION}"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Check if tag exists
+        id: tag_check
+        run: |
+          if git ls-remote --tags origin "${{ steps.get_version.outputs.TAG_NAME }}" | grep -q "refs/tags/${{ steps.get_version.outputs.TAG_NAME }}$"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create git tag (if not from tag push)
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag ${{ steps.get_version.outputs.TAG_NAME }}
+          git push origin ${{ steps.get_version.outputs.TAG_NAME }}
 
       - name: Generate changelog
         id: changelog
@@ -147,7 +215,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ steps.get_version.outputs.TAG_NAME }}
           release_name: Release v${{ steps.get_version.outputs.VERSION }}
           body: |
             ## Changes in v${{ steps.get_version.outputs.VERSION }}
